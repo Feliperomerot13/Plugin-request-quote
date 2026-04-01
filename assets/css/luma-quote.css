@@ -1,0 +1,189 @@
+/* Luma Quote Cart Styles */
+
+#lqc-floating-basket {
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	background: #000;
+	color: #fff;
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	z-index: 9999;
+	transition: transform 0.3s ease;
+}
+
+#lqc-floating-basket:hover {
+	transform: scale(1.1);
+}
+
+#lqc-floating-basket .dashicons {
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+}
+
+#lqc-floating-basket .lqc-count {
+	font-size: 12px;
+	font-weight: bold;
+	margin-top: 2px;
+}
+
+/* Modal */
+#lqc-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	z-index: 10000;
+	display: none;
+}
+
+#lqc-modal {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 90%;
+	max-width: 600px;
+	background: #fff;
+	padding: 20px;
+	border-radius: 8px;
+	z-index: 10001;
+	max-height: 90vh;
+	overflow-y: auto;
+	display: none;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+body.lqc-modal-open #lqc-modal-overlay,
+body.lqc-modal-open #lqc-modal {
+	display: block;
+}
+
+.lqc-modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+	border-bottom: 1px solid #eee;
+	padding-bottom: 10px;
+}
+
+.lqc-modal-header h3 {
+	margin: 0;
+}
+
+.lqc-close-modal {
+	background: none;
+	border: none;
+	font-size: 24px;
+	cursor: pointer;
+}
+
+/* Items List */
+.lqc-item {
+	display: flex;
+	align-items: center;
+	border-bottom: 1px solid #f0f0f0;
+	padding: 10px 0;
+}
+
+.lqc-item-image {
+	width: 60px;
+	margin-right: 15px;
+}
+
+.lqc-item-image img {
+	width: 100%;
+	height: auto;
+	border-radius: 4px;
+}
+
+.lqc-item-info {
+	flex-grow: 1;
+}
+
+.lqc-item-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.lqc-qty {
+	width: 60px;
+	padding: 5px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.lqc-remove {
+	background: none;
+	border: none;
+	color: #ff4444;
+	font-size: 20px;
+	cursor: pointer;
+}
+
+/* Form */
+.lqc-form-group {
+	margin-bottom: 15px;
+}
+
+.lqc-form-group label {
+	display: block;
+	margin-bottom: 5px;
+	font-weight: 500;
+}
+
+#lqc-quote-form .lqc-form-group input,
+#lqc-quote-form .lqc-form-group textarea,
+.lqc-modal-body input,
+.lqc-modal-body textarea {
+	width: 100%;
+	padding: 8px;
+	border: 1px solid #ccc !important;
+	border-radius: 4px;
+	color: #333 !important;
+	background-color: #fff !important;
+	/* Force dark text color and white background */
+}
+
+#lqc-quote-form .lqc-form-group input::placeholder,
+#lqc-quote-form .lqc-form-group textarea::placeholder,
+.lqc-modal-body input::placeholder {
+	color: #999 !important;
+	opacity: 1;
+	/* Firefox */
+}
+
+.lqc-form-actions {
+	text-align: right;
+	margin-top: 20px;
+}
+
+button.loading {
+	opacity: 0.7;
+	cursor: not-allowed;
+}
+
+.lqc-response {
+	margin-top: 10px;
+	font-size: 14px;
+}
+
+.lqc-response.success {
+	color: green;
+}
+
+.lqc-response.error {
+	color: red;
+}
