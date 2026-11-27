@@ -47,4 +47,14 @@ Puedes usar estos shortcodes en widgets de texto o Shortcode de Elementor:
 
 - `/includes`: Clases PHP (Settings, Cart, Ajax, Mailer, Frontend).
 - `/assets`: CSS y JS (Vanilla/jQuery).
-- Sin tablas extra en la base de datos (usa `WC_Session`).
+- La selección temporal usa `WC_Session`. Desde 1.3, una tabla privada guarda una fila por cotización generada.
+
+## Piloto de cotización PDF (1.2.0)
+
+En el editor clásico de WooCommerce, cada producto sencillo o variación tiene campos privados para el precio neto en COP, el IVA por unidad y la unidad comercial. Los valores vacíos quedan en revisión. El precio neto debe ser positivo. El IVA admite cero. En pisos configure la unidad m²; la lista permite editar el área con hasta dos decimales. El contador muestra las referencias seleccionadas.
+
+En WooCommerce → Request a Quote, active **Emitir cotización PDF** después de conciliar las referencias con el tarifario y verificar el correo saliente en pruebas. La opción está desactivada inicialmente. Las tarifas se conservan en la tienda. El modo PDF solicita un correo válido, emite un documento tras el formulario, muestra la descarga y adjunta el mismo archivo a los dos correos. Un importe faltante se identifica como pendiente; en una solicitud mixta la suma incluye solo las líneas valoradas. El enlace de descarga de esta versión permanece en la pantalla de resultado. En WooCommerce → Cotizaciones Luma se pueden revisar los contactos y proyectos, consultar las referencias y exportar el listado en CSV. El registro se inicia al instalar la versión 1.3. Las pruebas de administrador tienen su propia vista y exportación.
+
+El generador incluye FPDF 1.9.0 (MIT), aislado en su propio espacio de nombres, con sus fuentes base. Inter se distribuye bajo su licencia OFL incluida en assets/fonts. El ajuste «Fotografía de la cotización PDF» admite una imagen panorámica opcional de la biblioteca de medios. Las imágenes provienen de medios locales JPEG/PNG y el texto comercial sigue disponible cuando no hay imagen compatible.
+
+La edición del sitio puede incluir una tabla privada en `includes/site-tariffs.php`. Se entrega por separado y se procesa en el servidor. Los campos privados de una referencia o variación permiten sustituir su tarifa. Cada variación de piso utiliza su propio ID y color para encontrar la tarifa. Las combinaciones sin tarifa quedan en revisión.

@@ -1,28 +1,189 @@
 jQuery(document).ready(function ($) {
 
-    // AJAX Fragment Refresh for caching
+
+    // Retain BeTheme's mobile menu actions and its desktop catalogue label.
+    if (document.getElementById('luma-brand-css')) {
+        // BeTheme can supply its own untranslated pagination label.
+        document.querySelectorAll('.mfn-archive-product-tmpl-builder a.pager_load_more .button_label').forEach(function (label) {
+            if (label.textContent.trim().toLowerCase() === 'load more') label.textContent = 'Ver más productos';
+        });
+        document.querySelectorAll('.mfn-header-tmpl .mfn-open-sidebar[data-sidemenu="31"] .desc-wrapper').forEach(function (label) {
+            var full = document.createElement('span');
+            full.className = 'luma-catalog-full';
+            full.textContent = label.textContent;
+            var short = document.createElement('span');
+            short.className = 'luma-catalog-short';
+            short.textContent = 'Catálogo';
+            label.replaceChildren(full, short);
+        });
+        document.querySelectorAll('.mfn-header-tmpl a.mfn-header-classic-mobile-menu-toggle').forEach(function (toggle) {
+            toggle.setAttribute('aria-label', 'Menú principal');
+        });
+    }
+
+    // BeTheme product sheets put the quote shortcode below the delivery copy.
+    // Move the actual controls so the keyboard order follows the desktop layout.
+    var desktopSheet = window.matchMedia('(min-width: 960px)');
+    $('.mfn-single-product-tmpl-builder .sticky-desktop > .mcb-wrap-inner').each(function () {
+        var column = $(this);
+        var title = column.children('.column_product_title').first();
+        var actions = column.children('.column_plain_text').filter(function () {
+            return $(this).find('.lqc-add-to-quote').length > 0;
+        }).first();
+        if (!title.length || !actions.length) return;
+
+        var originalSlot = document.createComment('Luma product actions');
+        actions[0].before(originalSlot);
+        var features = column.find('.woocommerce-product-details__short-description > ul').first();
+        var disclosure = null;
+        if (features.children('li').length >= 3) {
+            disclosure = $('<details>', {class: 'lqc-product-features'});
+            disclosure.append($('<summary>').text('Ver características'));
+        }
+
+        var panel = column.parent()[0];
+        var header = document.querySelector('.mfn-header-tmpl-fixed');
+        function measurePanel() {
+            if (!desktopSheet.matches) return;
+            var clearance = header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+            panel.style.setProperty('--lqc-header-bottom', Math.ceil(clearance) + 'px');
+            panel.style.setProperty('--lqc-panel-height', Math.ceil(panel.getBoundingClientRect().height) + 'px');
+        }
+        if (window.ResizeObserver) {
+            var observer = new ResizeObserver(measurePanel);
+            observer.observe(panel);
+            if (header) observer.observe(header);
+        }
+        function layoutSheet() {
+            if (desktopSheet.matches) {
+                panel.classList.add('lqc-product-panel');
+                actions.addClass('lqc-product-actions').insertAfter(title);
+                if (disclosure && !disclosure[0].isConnected) {
+                    features.before(disclosure);
+                    disclosure.append(features);
+                }
+            } else {
+                panel.classList.remove('lqc-product-panel');
+                originalSlot.after(actions[0]);
+                actions.removeClass('lqc-product-actions');
+                if (disclosure && disclosure[0].isConnected) {
+                    disclosure.before(features).detach();
+                }
+            }
+        }
+        layoutSheet();
+        measurePanel();
+        desktopSheet.addEventListener('change', layoutSheet);
+    });
+
+    function showStep(container, contact) {
+        container.find('.lqc-items-list, .lqc-continue').prop('hidden', contact);
+        container.find('.lqc-contact-form').prop('hidden', !contact);
+        container.find('.lqc-steps li').removeAttr('aria-current').eq(contact ? 1 : 0).attr('aria-current', 'step');
+    }
+
+    $(document).on('click', '.lqc-continue, .lqc-back', function () {
+        var container = $(this).closest('.lqc-modal-body, .lqc-cart-wrapper');
+        var contact = $(this).hasClass('lqc-continue');
+        if (contact) {
+            var quantities = {};
+            var inputs = container.find('.lqc-qty');
+            for (var input of inputs.get()) {
+                if (!input.value || !input.reportValidity()) {
+                    input.focus();
+                    return;
+                }
+                quantities[$(input).closest('.lqc-item').attr('data-id')] = input.value;
+            }
+            container.find('[name="lqc_quantities"]').val(JSON.stringify(quantities));
+        }
+        showStep(container, contact);
+        container.find(contact ? '.lqc-contact-form input:visible' : '.lqc-continue').first().trigger('focus');
+    });
+
+    function refreshView(html) {
+        $('.lqc-modal-body, .lqc-cart-wrapper').each(function () {
+            var container = $(this);
+            var form = container.find('.lqc-contact-form');
+            if (form.data('submitting')) return;
+            var values = form.serializeArray();
+            var inContact = form.length && !form.prop('hidden');
+            var requestId = form.data('request-id');
+            container.html(html);
+            var next = container.find('.lqc-contact-form');
+            if (requestId) next.data('request-id', requestId);
+            values.forEach(function (field) {
+                var control = next.find('[name]').filter(function () { return this.name === field.name; });
+                if (control.is(':checkbox')) control.prop('checked', true);
+                else control.val(field.value);
+            });
+            showStep(container, inContact);
+        });
+    }
+
+    function resetActions(buttons) {
+        buttons.filter('.lqc-selected').each(function () {
+            var button = $(this);
+            button.find('.lqc-action-label').text(button.data('add-label'));
+            button.removeClass('lqc-selected');
+        });
+    }
+
+    $(document).on('change', '.lqc-shortcode-variation-select, form.cart [name^="attribute_"], form.cart [name="quantity"]', function () {
+        resetActions($(this).closest('.product, .lqc-shortcode-container, form.cart').find('.lqc-add-to-quote'));
+    });
+
+    var pendingRefresh = null;
+    var fragmentsReady = false;
     function refreshCartFragments() {
-        $.post(lqc_vars.ajax_url, {
+        if (pendingRefresh) return pendingRefresh;
+        pendingRefresh = $.post(lqc_vars.ajax_url, {
             action: 'lqc_get_fragments'
         }, function(response) {
             if (response.success && response.data) {
+                fragmentsReady = true;
                 updateCounter(response.data.count);
                 if (response.data.html) {
-                    $('.lqc-modal-body').html(response.data.html);
-                    $('.lqc-cart-wrapper').html(response.data.html);
+                    refreshView(response.data.html);
                 }
                 if (response.data.nonce) {
                     lqc_vars.nonce = response.data.nonce;
                 }
             }
         });
+        pendingRefresh.always(function () { pendingRefresh = null; });
+        return pendingRefresh;
     }
 
-    // Bypass cache immediately on load
-    refreshCartFragments();
+    // A cached anonymous page is usable without a session or a trip to admin-ajax.
+    var rememberedSelection = false;
+    try { rememberedSelection = localStorage.getItem('lqc_has_items') === '1'; } catch (error) {}
+    if (rememberedSelection || $('.lqc-cart-wrapper').length || Number($('.lqc-count').first().text()) > 0) {
+        refreshCartFragments();
+    }
+
+    function addReference(payload) {
+        function send() {
+            payload.nonce = lqc_vars.nonce;
+            return $.post(lqc_vars.ajax_url, payload);
+        }
+        return $.when(pendingRefresh).then(send).then(null, function (xhr) {
+            // Only retry a nonce rejection: WordPress did not execute the write.
+            if (xhr.status === 403 && String(xhr.responseText).trim() === '-1') {
+                return refreshCartFragments().then(send);
+            }
+            return $.Deferred().reject(xhr).promise();
+        });
+    }
+
     $(document).on('click', '.lqc-add-to-quote', function (e) {
         e.preventDefault();
         var $btn = $(this);
+        if ($btn.hasClass('lqc-selected')) {
+            if ($('#lqc-modal').length) openModal(this);
+            else if (lqc_vars.quote_page_url) window.location.assign(lqc_vars.quote_page_url);
+            return;
+        }
         var product_id = $btn.data('product_id');
         var quantity = 1;
         var variation_id = 0;
@@ -80,64 +241,86 @@ jQuery(document).ready(function ($) {
             }
         }
 
-        $btn.addClass('loading');
+        $btn.addClass('loading').attr('aria-busy', 'true').prop('disabled', true);
 
-        $.post(lqc_vars.ajax_url, {
+        addReference({
             action: 'lqc_add_to_quote',
-            nonce: lqc_vars.nonce,
             product_id: product_id,
             quantity: quantity,
             variation_id: variation_id,
             variations: variations
-        }, function (response) {
+        }).done(function (response) {
             $btn.removeClass('loading');
             if (response.success) {
-                $btn.text(lqc_vars.strings.added);
+                fragmentsReady = true;
+                $('.lqc-announcement').text('Producto añadido a tu cotización.');
+                if ($('#lqc-modal').length || lqc_vars.quote_page_url) {
+                    var label = $btn.find('.lqc-action-label');
+                    if (!label.length) {
+                        label = $('<span>', {class:'lqc-action-label'}).text($btn.text().trim());
+                        $btn.empty().append(label);
+                    }
+                    $btn.data('add-label', label.text()).addClass('lqc-selected');
+                    label.text('Ver mi cotización');
+                }
                 updateCounter(response.data.count);
 
                 // Update Modal Content with fresh HTML
                 if (response.data.html) {
-                    var $modalBody = $('.lqc-modal-body');
-                    var $shortcodeWrapper = $('.lqc-cart-wrapper');
-                    var updated = false;
-
-                    if ($modalBody.length) {
-                        $modalBody.html(response.data.html);
-                        updated = true;
-                    }
-
-                    if ($shortcodeWrapper.length) {
-                        $shortcodeWrapper.html(response.data.html);
-                        updated = true;
-                    }
-
-                    if (!updated) {
-                        console.warn('LQC: No cart container found (.lqc-modal-body or .lqc-cart-wrapper). Cart updated in background.');
-                    }
+                    refreshView(response.data.html);
                 }
 
-                // Optional: Open modal immediately?
-                // $('body').addClass('lqc-modal-open');
             } else {
                 alert(response.data.message);
             }
+        }).fail(function () {
+            alert('No se pudo confirmar la selección. Revisa tu lista antes de intentarlo otra vez.');
+        }).always(function () {
+            $btn.removeClass('loading').removeAttr('aria-busy').prop('disabled', false);
         });
     });
 
     // Update Counter
     function updateCounter(count) {
+        try {
+            if (Number(count) > 0) localStorage.setItem('lqc_has_items', '1');
+            else localStorage.removeItem('lqc_has_items');
+        } catch (error) {}
         $('.lqc-count').text(count);
+        if (Number(count) === 0) resetActions($('.lqc-selected'));
     }
 
-    // Toggle Modal
+    var opener;
+    function closeModal() {
+        $('body').removeClass('lqc-modal-open');
+        if (opener && opener.isConnected) opener.focus();
+    }
+
+    function openModal(trigger) {
+        if (!fragmentsReady) refreshCartFragments();
+        opener = trigger;
+        $('body').addClass('lqc-modal-open');
+        $('#lqc-modal .lqc-close-modal').trigger('focus');
+    }
+
     $(document).on('click', '.lqc-toggle-modal', function (e) {
         e.preventDefault();
-        $('body').addClass('lqc-modal-open');
+        openModal(this);
     });
 
     $(document).on('click', '.lqc-close-modal, #lqc-modal-overlay', function (e) {
         e.preventDefault();
-        $('body').removeClass('lqc-modal-open');
+        closeModal();
+    });
+
+    $(document).on('keydown', function (event) {
+        if (!$('body').hasClass('lqc-modal-open')) return;
+        if (event.key === 'Escape') closeModal();
+        if (event.key !== 'Tab') return;
+        var controls = $('#lqc-modal').find('a[href], button:enabled, input:enabled, textarea:enabled, select:enabled').filter(':visible');
+        var first = controls.get(0), last = controls.get(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
 
     // Go to Page (if popup disabled)
@@ -159,12 +342,13 @@ jQuery(document).ready(function ($) {
             product_id: product_id
         }, function (response) {
             if (response.success) {
-                $item.slideUp(function () { $(this).remove(); });
+                var parentId = String(product_id).split('_')[0];
+                resetActions($('.lqc-selected').filter(function () {
+                    return String($(this).data('product_id')) === parentId;
+                }));
+                if (response.data.html) refreshView(response.data.html);
                 updateCounter(response.data.count);
-                if (response.data.count === 0) {
-                    // Refresh to show empty message or handle via JS
-                    location.reload();
-                }
+
             }
         });
     });
@@ -192,6 +376,7 @@ jQuery(document).ready(function ($) {
                 }
             });
 
+            if (!allSelected) return;
             // We need to resolve the new variation_id based on selected attributes. 
             // In a full implementation, WordPress does this via data attributes.
             // For LQC MVP, we will send the attributes back to the server and let WC figure it out
@@ -211,41 +396,59 @@ jQuery(document).ready(function ($) {
                 updateCounter(response.data.count);
                 if (response.data.html) {
                     // Refresh the modal HTML so the new key and image are updated
-                    $('.lqc-modal-body').html(response.data.html);
-                    $('.lqc-cart-wrapper').html(response.data.html);
+                    refreshView(response.data.html);
                 }
+            } else {
+                alert(response.data.message);
+                refreshCartFragments();
             }
-        });
+        }).fail(function () { alert('No se pudo confirmar la cantidad. Revisa tu lista.'); });
     });
 
     // Submit Form
-    $(document).on('submit', '#lqc-quote-form', function (e) {
+    $(document).on('submit', '.lqc-contact-form', function (e) {
         e.preventDefault();
         var $form = $(this);
         var $btn = $form.find('button[type="submit"]');
         var $response = $form.find('.lqc-response');
 
-        $btn.prop('disabled', true);
+        var submitLabel = $btn.text();
+        $btn.attr('aria-busy', 'true').prop('disabled', true).text(lqc_vars.pdf_enabled ? 'Generando cotización…' : 'Enviando solicitud…');
         $response.text('').removeClass('success error');
 
+        $form.data('submitting', true);
         var data = $form.serialize();
-        data += '&action=lqc_submit_quote&nonce=' + lqc_vars.nonce;
-
-        $.post(lqc_vars.ajax_url, data, function (response) {
-            $btn.prop('disabled', false);
-            if (response.success) {
-                $response.addClass('success').text(response.data.message);
-                $form.find('input, textarea').val('');
-                $('.lqc-items-list').html('<p>' + response.data.message + '</p>');
-                updateCounter(0);
-                setTimeout(function () {
-                    $('body').removeClass('lqc-modal-open');
-                    // location.reload(); // Optional
-                }, 3000);
-            } else {
+        if (!$form.data('request-id')) {
+            var bytes = crypto.getRandomValues(new Uint8Array(16));
+            bytes[6] = (bytes[6] & 15) | 64;
+            bytes[8] = (bytes[8] & 63) | 128;
+            var hex = Array.from(bytes, function (n) { return n.toString(16).padStart(2, '0'); }).join('');
+            $form.data('request-id', hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'));
+        }
+        data += '&request_id=' + encodeURIComponent($form.data('request-id'));
+        data += '&action=lqc_submit_quote&nonce=' + encodeURIComponent(lqc_vars.nonce);
+        $.post(lqc_vars.ajax_url, data).done(function (response) {
+            if (!response.success) {
                 $response.addClass('error').text(response.data.message);
+                return;
             }
+            var box = $('<div>', {class: 'lqc-result', role: 'status'});
+            $('<h3>').text(response.data.pdf ? 'Tu cotización está lista' : 'Solicitud recibida').appendTo(box);
+            $('<p>').text(response.data.message).appendTo(box);
+            if (response.data.pdf) {
+                var binary = atob(response.data.pdf);
+                var bytes = Uint8Array.from(binary, function (c) { return c.charCodeAt(0); });
+                var url = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
+                $('<a>', {class: 'button lqc-download', href: url, download: response.data.folio + '.pdf'})
+                    .text('Descargar cotización PDF').appendTo(box);
+            }
+            $('.lqc-modal-body, .lqc-cart-wrapper').empty().append(box);
+            updateCounter(0);
+        }).fail(function () {
+            $response.addClass('error').text('Se interrumpió la conexión. Tus datos siguen aquí. Vuelve a intentarlo.');
+        }).always(function () {
+            $form.removeData('submitting');
+            $btn.removeAttr('aria-busy').prop('disabled', false).text(submitLabel);
         });
     });
-
 });

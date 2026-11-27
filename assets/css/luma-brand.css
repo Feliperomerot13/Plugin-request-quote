@@ -1,0 +1,105 @@
+/* Luma's web palette. Keep each role consistent across BeTheme, Elementor and the quote flow. */
+:root {
+    --luma-yellow: #e2aa31;
+    --luma-logo-gray: #606060;
+    --luma-action: var(--luma-yellow);
+    --luma-yellow-hover: #efbe50;
+    --luma-ink: #25282a;
+    --luma-ivory: #f5f3ef;
+    --luma-white: #ffffff;
+    --luma-link: #785900;
+}
+
+body :is(.elementor-widget-button a.elementor-button:is([href$="/nosotros/"], [href$="/contacto/"], [href$="/proyectos/"]),
+         :is(.rev-btn,.sr7-btn)[href*="/portfolio-item/"]),
+body.single-portfolio .elementor-widget-button a.elementor-button,
+.mfn-header-tmpl .mcb-item-header_burger-inner:has(.mfn-icon-box-left),
+.luma-contact-embed .hs-button.primary {
+    background-color: var(--luma-action) !important;
+    color: #181818 !important;
+    box-shadow: inset 3px 0 var(--luma-yellow) !important;
+    border-color: var(--luma-yellow) !important;
+    text-shadow: none !important;
+}
+body :is(.elementor-widget-button a.elementor-button:is([href$="/nosotros/"], [href$="/contacto/"], [href$="/proyectos/"]),
+         :is(.rev-btn,.sr7-btn)[href*="/portfolio-item/"]):is(:hover,:active),
+body.single-portfolio .elementor-widget-button a.elementor-button:is(:hover,:active),
+.mfn-header-tmpl .mcb-item-header_burger-inner:has(.mfn-icon-box-left:is(:hover,:active)),
+.luma-contact-embed .hs-button.primary:is(:hover,:active) {
+    background-color: var(--luma-yellow-hover) !important;
+    border-color: var(--luma-yellow-hover) !important;
+}
+.mfn-header-tmpl .mcb-item-header_burger-inner .mfn-icon-box-left,
+.mfn-header-tmpl .mcb-item-header_burger-inner .mfn-icon-box-left :is(.desc-wrapper,.icon-wrapper,i),
+body.single-portfolio .elementor-widget-button .elementor-button span,
+body .elementor-widget-button .elementor-button:is([href$="/nosotros/"],[href$="/contacto/"],[href$="/proyectos/"]) span {
+    color: #181818 !important;
+}
+#mfn-footer-template a.button[href$="/contacto/"] {
+    color: var(--luma-ink) !important;
+    border-color: var(--luma-ink) !important;
+    background: transparent !important;
+}
+#mfn-footer-template a.button[href$="/contacto/"]:is(:hover,:active) {
+    background: var(--luma-ivory) !important;
+}
+#mfn-footer-template a.button[href$="/contacto/"] :is(.button_label,.button_icon,i),
+#mfn-footer-template a.button[href$="/contacto/"]::after {
+    color: inherit !important;
+    background: transparent !important;
+}
+.home :is(.elementor-widget-text-editor,.elementor-widget-heading) a[href$="/proyectos/"] {
+    color: var(--luma-link) !important; text-decoration: underline; text-underline-offset: .16em;
+}
+body :is(.elementor-widget-button a.elementor-button,.rev-btn,.sr7-btn,.mfn-icon-box-left,#mfn-footer-template a.button):focus-visible,
+.luma-contact-embed .hs-button.primary:focus-visible {
+    outline: 2px solid var(--luma-ink) !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--luma-white);
+}
+
+.single-portfolio .slider_nav.themebg {
+    background-color: var(--luma-ivory) !important;
+    color: var(--luma-ink) !important;
+}
+.single-portfolio .slider_nav.themebg:is(:hover,:focus-visible) {
+    background-color: var(--luma-yellow) !important;
+}
+
+.mfn-header-tmpl .luma-catalog-short { display: none; }
+
+@media (max-width: 767px) {
+    .mfn-header-tmpl .mcb-section-6qz7gmslj { padding: 6px 12px !important; }
+    .mfn-header-tmpl .mcb-section-inner-6qz7gmslj {
+        display: flex; flex-flow: row nowrap; align-items: center; justify-content: space-between;
+    }
+    .mfn-header-tmpl .mcb-section-inner-6qz7gmslj > .mcb-wrap {
+        flex: 0 1 auto !important; width: auto !important; min-width: 0;
+    }
+    .mfn-header-tmpl .column_header_logo img { max-width: min(26vw, 108px); height: auto; }
+    .mfn-header-tmpl .mcb-wrap-inner-7a4pffe4e {
+        display: flex; flex-flow: row nowrap; align-items: center; justify-content: flex-end; gap: 6px;
+    }
+    .mfn-header-tmpl .column_header_burger { width: auto !important; margin: 0 !important; }
+    .mfn-header-tmpl .column_header_burger > .mcb-item-header_burger-inner {
+        padding: 0 !important; margin: 0 !important; box-shadow: none !important;
+    }
+    .mfn-header-tmpl .column_header_burger .mfn-header-menu-burger {
+        box-sizing: border-box; min-width: 44px; min-height: 44px;
+        display: inline-flex; align-items: center; justify-content: center; margin: 0;
+    }
+    .mfn-header-tmpl .mfn-open-sidebar[data-sidemenu="31"] { padding: 0 13px; }
+    .mfn-header-tmpl .mfn-open-sidebar[data-sidemenu="31"] .desc-wrapper {
+        font-size: 14px; font-weight: 600; line-height: 1.2; padding: 0; white-space: nowrap;
+    }
+    .mfn-header-tmpl .mfn-open-sidebar[data-sidemenu="31"] .icon-wrapper,
+    .mfn-header-tmpl .luma-catalog-full { display: none; }
+    .mfn-header-tmpl .luma-catalog-short { display: inline; }
+    .mfn-header-tmpl a.mfn-header-classic-mobile-menu-toggle .icon-wrapper {
+        width: 20px; height: 16px; padding: 0; margin: 0; border: 0;
+        background: linear-gradient(#fff,#fff) center / 20px 2px no-repeat;
+        border-block: 2px solid white; border-radius: 0; box-sizing: border-box;
+    }
+    .mfn-header-tmpl a.mfn-header-classic-mobile-menu-toggle i { display: none; }
+    .mfn-header-tmpl .mfn-header-menu-burger:focus-visible { outline: 2px solid white !important; outline-offset: 2px; }
+}

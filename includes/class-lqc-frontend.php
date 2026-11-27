@@ -9,6 +9,7 @@ class Luma_Quote_Cart_Frontend
     public function __construct()
     {
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
+        add_action('template_redirect', array($this, 'protect_private_quote'));
 
         // Button hooks
         add_action('woocommerce_after_shop_loop_item', array($this, 'add_button_loop'), 15);
@@ -29,14 +30,32 @@ class Luma_Quote_Cart_Frontend
         add_shortcode('luma_quote_cart', array($this, 'shortcode_cart'));
     }
 
+    public function protect_private_quote()
+    {
+        $quote_page = (int) get_option('lqc_quote_page_id');
+        if (($quote_page && is_page($quote_page)) || Luma_Quote_Cart::get_instance()->cart->get_cart_items()) {
+            wc_nocache_headers();
+        }
+    }
+
     public function enqueue_scripts()
     {
+        $styles = array();
+        if (in_array(wp_parse_url(home_url(), PHP_URL_HOST), array('lumaa.co', 'www.lumaa.co'), true)) {
+            wp_enqueue_style('luma-brand', LUMA_QUOTE_URL . 'assets/css/luma-brand.css', array(), LUMA_QUOTE_VERSION);
+            $styles[] = 'luma-brand';
+            if (is_page('contacto')) {
+                wp_enqueue_script('luma-contact-brand', LUMA_QUOTE_URL . 'assets/js/luma-contact-brand.js', array(), LUMA_QUOTE_VERSION, true);
+            }
+        }
         wp_enqueue_style('dashicons');
-        wp_enqueue_style('luma-quote-cart', LUMA_QUOTE_URL . 'assets/css/luma-quote.css', array(), LUMA_QUOTE_VERSION);
+        wp_enqueue_style('luma-quote-cart', LUMA_QUOTE_URL . 'assets/css/luma-quote.css', $styles, LUMA_QUOTE_VERSION);
         wp_enqueue_script('luma-quote-cart', LUMA_QUOTE_URL . 'assets/js/luma-quote.js', array('jquery'), LUMA_QUOTE_VERSION, true);
 
         wp_localize_script('luma-quote-cart', 'lqc_vars', array(
             'ajax_url' => admin_url('admin-ajax.php'),
+            'quote_page_url' => get_option('lqc_quote_page_id') ? get_permalink(get_option('lqc_quote_page_id')) : '',
+            'pdf_enabled' => LQC_Quote_PDF::enabled(),
             'nonce' => wp_create_nonce('lqc-nonce'),
             'strings' => array(
                 'added' => __('¡Agregado!', 'luma-quote-cart'),
@@ -48,6 +67,13 @@ class Luma_Quote_Cart_Frontend
     /**
      * Render Add to Quote Button.
      */
+    private function button_text()
+    {
+        $label = get_option('lqc_button_text', '');
+        return in_array($label, array('', 'Cotizar ahora', 'Agregar a Cotización'), true)
+            ? 'Añadir a cotización' : $label;
+    }
+
     public function render_button($product_id = 0)
     {
         global $product;
@@ -58,10 +84,10 @@ class Luma_Quote_Cart_Frontend
         if (!$product_id)
             return;
 
-        $label = get_option('lqc_button_text', 'Agregar a Cotización');
+        $label = $this->button_text();
 
         echo '<button type="button" class="lqc-add-to-quote button alt" data-product_id="' . esc_attr($product_id) . '">';
-        echo esc_html($label);
+        echo '<span class="lqc-action-label">'.esc_html($label).'</span>';
         echo '</button>';
     }
 
@@ -84,7 +110,7 @@ class Luma_Quote_Cart_Frontend
             return '';
         }
 
-        $button_text = get_option('lqc_button_text', 'Agregar a Cotización');
+        $button_text = $this->button_text();
 
         ob_start();
         ?>
@@ -99,7 +125,7 @@ class Luma_Quote_Cart_Frontend
                             <label style="display:block; font-size:13px; font-weight:bold; margin-bottom:5px; color:#555;">
                                 <?php echo wc_attribute_label($attribute_name); ?>:
                             </label>
-                            <select class="lqc-shortcode-variation-select" data-attribute_name="attribute_<?php echo esc_attr($attribute_name); ?>" style="width: 100%; max-width: 300px; padding: 10px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; font-size: 14px; box-shadow: none; outline: none;">
+                            <select class="lqc-shortcode-variation-select" data-attribute_name="attribute_<?php echo esc_attr(sanitize_title($attribute_name)); ?>" style="width: 100%; max-width: 300px; padding: 10px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; font-size: 14px; box-shadow: none; outline: none;">
                                 <option value=""><?php esc_html_e('Elegir', 'woocommerce'); ?></option>
                                 <?php foreach ($options as $option): ?>
                                     <option value="<?php echo esc_attr($option); ?>">
@@ -111,9 +137,9 @@ class Luma_Quote_Cart_Frontend
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            <button class="button lqc-add-to-quote lqc-is-shortcode"
+            <button type="button" class="button lqc-add-to-quote lqc-is-shortcode"
                 data-product_id="<?php echo esc_attr($product_id); ?>">
-                <?php echo esc_html($button_text); ?>
+                <span class="lqc-action-label"><?php echo esc_html($button_text); ?></span>
             </button>
         </div>
         <?php
@@ -122,19 +148,29 @@ class Luma_Quote_Cart_Frontend
 
     public function add_button_loop()
     {
+        global $product;
+        if ($product && $product->is_type('variable')) {
+            echo '<a class="button lqc-choose" href="'.esc_url($product->get_permalink()).'">Elegir opciones</a>';
+            return;
+        }
         $this->render_button();
     }
 
     public function add_button_single()
     {
+        global $product;
+        if ($product && $product->is_type('variable')) {
+            echo $this->render_button_shortcode(array('id' => $product->get_id()));
+            return;
+        }
         $this->render_button();
     }
 
     public function shortcode_button($atts)
     {
-        ob_start();
-        $this->render_button();
-        return ob_get_clean();
+        global $product;
+        $id = !empty($atts['id']) ? absint($atts['id']) : ($product ? $product->get_id() : get_the_ID());
+        return $this->render_button_shortcode(array('id' => $id));
     }
 
     /**
@@ -145,12 +181,12 @@ class Luma_Quote_Cart_Frontend
         $count = Luma_Quote_Cart::get_instance()->cart->get_cart_count();
         ob_start();
         ?>
-        <div class="lqc-basket-shortcode lqc-toggle-modal">
+        <button type="button" aria-label="Ver mi cotización" class="lqc-basket-shortcode <?php echo get_option('lqc_enable_popup', 'yes') === 'yes' ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
             <span class="dashicons dashicons-cart"></span>
             <span class="lqc-count">
                 <?php echo esc_html($count); ?>
             </span>
-        </div>
+        </button>
         <?php
         return ob_get_clean();
     }
@@ -173,26 +209,27 @@ class Luma_Quote_Cart_Frontend
         // However, we need the modal HTML if the popup is enabled, regardless of sticky button.
         $popup_enabled = get_option('lqc_enable_popup', 'yes') === 'yes';
 
+        echo '<span class="lqc-announcement" role="status" aria-live="polite" aria-atomic="true"></span>';
         if ($show_sticky) {
             ?>
-            <div id="lqc-floating-basket" class="<?php echo $popup_enabled ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
-                <span class="dashicons dashicons-format-aside"></span>
+            <button type="button" id="lqc-floating-basket" class="<?php echo $popup_enabled ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
+                <span class="lqc-document-mark" aria-hidden="true"></span><span>Mi cotización</span>
                 <span class="lqc-count">
                     <?php echo esc_html($count); ?>
                 </span>
-            </div>
+            </button>
             <?php
         }
 
         if ($popup_enabled) {
             ?>
             <div id="lqc-modal-overlay"></div>
-            <div id="lqc-modal">
+            <div id="lqc-modal" role="dialog" aria-modal="true" aria-labelledby="lqc-modal-heading">
                 <div class="lqc-modal-header">
-                    <h3>
-                        <?php esc_html_e('Solicitar Cotización', 'luma-quote-cart'); ?>
+                    <h3 id="lqc-modal-heading">
+                        <?php esc_html_e('Mi cotización', 'luma-quote-cart'); ?>
                     </h3>
-                    <button class="lqc-close-modal">&times;</button>
+                    <button type="button" aria-label="Cerrar cotización" class="lqc-close-modal"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="lqc-modal-body">
                     <?php echo $this->get_cart_html(); ?>
@@ -222,7 +259,14 @@ class Luma_Quote_Cart_Frontend
             echo '<p class="lqc-empty">' . esc_html__('Tu lista de cotización está vacía.', 'luma-quote-cart') . '</p>';
         } else {
             ?>
+            <ol class="lqc-steps" aria-label="Pasos de la cotización">
+                <li aria-current="step"><span>1</span> Productos</li>
+                <li><span>2</span> Datos del proyecto</li>
+            </ol>
             <div class="lqc-items-list">
+                <?php if (LQC_Quote_PDF::enabled()): ?>
+                    <p class="lqc-note">Revisa las cantidades. Verás los precios al generar tu PDF.</p>
+                <?php endif; ?>
                 <?php foreach ($cart as $item): ?>
                     <div class="lqc-item" data-id="<?php echo esc_attr($item['cart_key']); ?>">
                         <div class="lqc-item-image">
@@ -242,11 +286,11 @@ class Luma_Quote_Cart_Frontend
                             if ($parent_product && $parent_product->is_type('variable')): 
                                 $attributes = $parent_product->get_variation_attributes();
                                 foreach ($attributes as $attribute_name => $options):
-                                    $selected_val = isset($item['raw_variations']['attribute_' . $attribute_name]) ? $item['raw_variations']['attribute_' . $attribute_name] : '';
+                                    $selected_val = isset($item['raw_variations']['attribute_' . sanitize_title($attribute_name)]) ? $item['raw_variations']['attribute_' . sanitize_title($attribute_name)] : '';
                                     ?>
                                     <div class="lqc-variation-field" style="margin-top: 5px;">
                                         <label style="font-size: 11px; display: block; color: #555; font-weight: bold;"><?php echo wc_attribute_label($attribute_name); ?>:</label>
-                                        <select class="lqc-change-variation" data-attribute_name="attribute_<?php echo esc_attr($attribute_name); ?>" style="font-size: 12px; padding: 4px; width: 100%; max-width: 150px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; box-shadow: none; outline: none;">
+                                        <select class="lqc-change-variation" data-attribute_name="attribute_<?php echo esc_attr(sanitize_title($attribute_name)); ?>" style="font-size: 12px; padding: 4px; width: 100%; max-width: 150px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; box-shadow: none; outline: none;">
                                             <option value=""><?php esc_html_e('Elegir', 'woocommerce'); ?></option>
                                             <?php foreach ($options as $option): ?>
                                                 <option value="<?php echo esc_attr($option); ?>" <?php selected($selected_val, $option); ?>>
@@ -261,52 +305,62 @@ class Luma_Quote_Cart_Frontend
                             <?php endif; ?>
                         </div>
                         <div class="lqc-item-actions">
-                            <input type="number" min="1" class="lqc-qty" value="<?php echo esc_attr($item['quantity']); ?>">
-                            <button type="button" class="lqc-remove">&times;</button>
+                            <label>Cantidad (<?php echo esc_html($item['unit']); ?>) <input type="number" min="<?php echo $item['unit'] === 'm²' ? '0.01' : '1'; ?>" step="<?php echo $item['unit'] === 'm²' ? '0.01' : '1'; ?>" class="lqc-qty" value="<?php echo esc_attr($item['quantity']); ?>"></label>
+                            <button type="button" class="lqc-remove" aria-label="Quitar <?php echo esc_attr($item['name']); ?>">Quitar</button>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
 
-            <form id="lqc-quote-form">
-                <!-- Configurable Fields -->
+            <button type="button" class="button lqc-continue">Continuar con mis datos</button>
+            <form class="lqc-contact-form" hidden>
+                <input type="hidden" name="lqc_quantities" value="">
+                <button type="button" class="lqc-back">Volver a mis productos</button>
+                <?php if (LQC_Quote_PDF::enabled()): ?>
+                    <p class="lqc-note">Usaremos tu correo para enviarte una copia de la cotización.</p>
+                <?php endif; ?>
                 <?php
                 $fields = array(
-                    'name' => array('label' => get_option('lqc_label_name', 'Nombre'), 'required' => true, 'type' => 'text'),
-                    'company' => array('label' => get_option('lqc_label_company', 'Empresa'), 'required' => false, 'type' => 'text'),
-                    'email' => array('label' => get_option('lqc_label_email', 'Email'), 'required' => false, 'type' => 'email'),
-                    'phone' => array('label' => get_option('lqc_label_phone', 'Teléfono / WhatsApp'), 'required' => true, 'type' => 'text'),
-                    'message' => array('label' => get_option('lqc_label_message', 'Mensaje'), 'required' => false, 'type' => 'textarea'),
+                    'name' => array('Nombre de contacto', 'text', true, 'name', 100),
+                    'email' => array('Correo electrónico', 'email', true, 'email', 254),
+                    'phone' => array('Teléfono de contacto', 'tel', true, 'tel', 30),
+                    'company' => array('Empresa (opcional)', 'text', false, 'organization', 120),
+                    'project' => array('Nombre del proyecto', 'text', true, '', 120),
+                    'location' => array('Ciudad o municipio del proyecto', 'text', true, '', 120),
                 );
-
-                foreach ($fields as $key => $field) {
-                    $field_id = 'lqc_' . $key;
-                    $is_enabled = get_option('lqc_field_enable_' . $key, 'yes') === 'yes';
-
-                    if (!$is_enabled)
-                        continue;
-
-                    $label = get_option('lqc_label_' . $key, $field['label']);
-                    $req = $field['required'] ? 'required' : '';
-                    $star = $field['required'] ? ' *' : '';
-
-                    echo '<div class="lqc-form-group">';
-                    echo '<label>' . esc_html($label . $star) . '</label>';
-
-                    if ($field['type'] === 'textarea') {
-                        echo '<textarea name="' . esc_attr($field_id) . '" ' . $req . '></textarea>';
-                    } else {
-                        echo '<input type="' . esc_attr($field['type']) . '" name="' . esc_attr($field_id) . '" ' . $req . '>';
-                    }
-                    echo '</div>';
-                }
-                ?>
-
+                foreach ($fields as $key => $field):
+                    if ($key === 'company' && get_option('lqc_field_enable_company', 'yes') !== 'yes') { continue; }
+                    ?>
+                    <div class="lqc-form-group">
+                        <label><?php echo esc_html($field[0].($field[2] ? ' *' : '')); ?>
+                            <input name="lqc_<?php echo esc_attr($key); ?>" type="<?php echo esc_attr($field[1]); ?>"
+                                maxlength="<?php echo (int)$field[4]; ?>" <?php if ($field[3]): ?>autocomplete="<?php echo esc_attr($field[3]); ?>"<?php endif; ?>
+                                <?php echo $field[2] ? 'required' : ''; ?>>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+                <div class="lqc-field-message">
+                    <label class="lqc-shipping-choice">
+                        <input type="checkbox" name="lqc_shipping" value="1">
+                        Solicitar cotización del envío
+                    </label>
+                </div>
+                <div class="lqc-form-group lqc-field-message">
+                    <label>Notas para la cotización (opcional)
+                        <textarea name="lqc_message" maxlength="800" rows="2"></textarea>
+                    </label>
+                </div>
+                <?php if (current_user_can('manage_options')): ?>
+                    <label class="lqc-shipping-choice">
+                        <input type="checkbox" name="lqc_test_copy" value="1">
+                        Prueba de administrador · Enviar ambas copias al correo de contacto
+                    </label>
+                <?php endif; ?>
                 <div class="lqc-form-actions">
                     <button type="submit"
-                        class="button primary"><?php esc_html_e('Enviar Solicitud', 'luma-quote-cart'); ?></button>
+                        class="button primary"><?php echo LQC_Quote_PDF::enabled() ? 'Generar mi cotización' : 'Enviar solicitud'; ?></button>
                 </div>
-                <div class="lqc-response"></div>
+                <div class="lqc-response" role="status"></div>
             </form>
             <?php
         }

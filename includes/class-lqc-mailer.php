@@ -6,11 +6,15 @@ if (!defined('ABSPATH')) {
 class Luma_Quote_Cart_Mailer
 {
 
-    public function send_quote($data)
+    public function send_quote($data, $attachments = array(), $items = null)
     {
         $admin_emails = get_option('lqc_recipient_emails');
         if (empty($admin_emails)) {
             $admin_emails = get_option('admin_email');
+        }
+
+        if (!empty($data['lqc_test_copy'])) {
+            $admin_emails = $data['lqc_email'];
         }
 
         $customer_name = $data['lqc_name'];
@@ -18,7 +22,7 @@ class Luma_Quote_Cart_Mailer
         $customer_phone = $data['lqc_phone'];
         $message_note = $data['lqc_message'];
 
-        $cart_details = Luma_Quote_Cart::get_instance()->cart->get_cart_details();
+        $cart_details = $items ?? Luma_Quote_Cart::get_instance()->cart->get_cart_details();
 
         // 1. Send to Admin
         $admin_subject = sprintf(__('Nueva Solicitud de Cotización de %s', 'luma-quote-cart'), $customer_name);
@@ -28,7 +32,7 @@ class Luma_Quote_Cart_Mailer
         }
 
         $admin_content = $this->get_email_content($data, $cart_details, 'admin');
-        $admin_sent = wp_mail($admin_emails, $admin_subject, $admin_content, $admin_headers);
+        $admin_sent = wp_mail($admin_emails, $admin_subject, $admin_content, $admin_headers, $attachments);
 
         // 2. Send to Customer (if email provided)
         $customer_sent = true;
@@ -37,7 +41,7 @@ class Luma_Quote_Cart_Mailer
             $customer_headers = array('Content-Type: text/html; charset=UTF-8');
 
             $customer_content = $this->get_email_content($data, $cart_details, 'customer');
-            $customer_sent = wp_mail($customer_email, $customer_subject, $customer_content, $customer_headers);
+            $customer_sent = wp_mail($customer_email, $customer_subject, $customer_content, $customer_headers, $attachments);
         }
 
         return $admin_sent && $customer_sent;
@@ -115,11 +119,6 @@ class Luma_Quote_Cart_Mailer
                 <?php if (!empty($customer_email)): ?>
                     <p><strong><?php esc_html_e('Email:', 'luma-quote-cart'); ?></strong> <?php echo esc_html($customer_email); ?></p>
                 <?php endif; ?>
-                <?php if (!empty($message_note)): ?>
-                    <p><strong><?php esc_html_e('Mensaje:', 'luma-quote-cart'); ?></strong><br><?php echo nl2br(esc_html($message_note)); ?>
-                    </p>
-                <?php endif; ?>
-
             <?php else: // Customer ?>
                 <h2><?php echo esc_html(get_option('lqc_customer_email_subject', 'Hemos recibido tu solicitud')); ?></h2>
                 <div>
@@ -131,8 +130,15 @@ class Luma_Quote_Cart_Mailer
                     <?php if (!empty($customer_company)): ?>
                         <?php echo esc_html($customer_company); ?><br>
                     <?php endif; ?>
-                    <?php echo esc_html($customer_phone); ?>
+                    <?php echo esc_html($customer_phone); ?><br><?php echo esc_html($customer_email); ?>
                 </p>
+            <?php endif; ?>
+
+            <p><strong>Proyecto</strong> · <?php echo esc_html($data['lqc_project']); ?><br>
+                <strong>Ubicación</strong> · <?php echo esc_html($data['lqc_location']); ?><br>
+                <strong>Envío</strong> · <?php echo $data['lqc_shipping'] ? 'Solicitado, pendiente de cotizar' : 'No solicitado'; ?></p>
+            <?php if ($message_note !== ''): ?>
+                <p><strong>Notas para la cotización</strong><br><?php echo nl2br(esc_html($message_note)); ?></p>
             <?php endif; ?>
 
             <h3><?php esc_html_e('Productos Solicitados', 'luma-quote-cart'); ?></h3>

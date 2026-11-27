@@ -30,7 +30,7 @@ class Luma_Quote_Cart_Ajax
         check_ajax_referer('lqc-nonce', 'nonce');
 
         $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
-        $quantity = isset($_POST['quantity']) ? absint($_POST['quantity']) : 1;
+        $quantity = isset($_POST['quantity']) ? wc_format_decimal(wp_unslash($_POST['quantity'])) : '1';
         $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
         
         $variations = array();
@@ -44,6 +44,13 @@ class Luma_Quote_Cart_Ajax
             wp_send_json_error(array('message' => __('Invalid product.', 'luma-quote-cart')));
         }
 
+        $effective_id = $variation_id ?: $product_id;
+        $step_pattern = LQC_Tariff::unit(wc_get_product($effective_id)) === 'm2'
+            ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/' : '/^[0-9]{1,7}$/';
+        if (!preg_match($step_pattern, $quantity) || (float)$quantity <= 0) {
+            wp_send_json_error(array('message' => 'Revisa la cantidad para esta unidad de venta.'));
+        }
+        $quantity = (float)$quantity;
         $cart = Luma_Quote_Cart::get_instance()->cart;
         $added = $cart->add_to_cart($product_id, $quantity, $variation_id, $variations);
 
@@ -70,7 +77,7 @@ class Luma_Quote_Cart_Ajax
             $cart_item_key = sanitize_text_field($_POST['product_id']);
         }
         
-        $quantity = isset($_POST['quantity']) ? absint($_POST['quantity']) : 0;
+        $quantity = isset($_POST['quantity']) ? wc_format_decimal(wp_unslash($_POST['quantity'])) : '';
         $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
         $variations = array();
         if (isset($_POST['variations']) && is_array($_POST['variations'])) {
@@ -81,8 +88,18 @@ class Luma_Quote_Cart_Ajax
 
         $cart = Luma_Quote_Cart::get_instance()->cart;
         
+        $lines = $cart->get_cart_items();
+        $line = $lines[$cart_item_key] ?? null;
+        $product = $line ? wc_get_product($line['variation_id'] ?: $line['product_id']) : false;
+        $is_area = $product && LQC_Tariff::unit($product) === 'm2';
+        $pattern = $is_area ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/' : '/^[0-9]{1,7}$/';
+        if (!$product || !preg_match($pattern, $quantity) || (float)$quantity <= 0) {
+            wp_send_json_error(array('message' => 'Revisa la cantidad y la unidad de esta referencia.'));
+        }
+        $quantity = (float)$quantity;
         if (!empty($variations) || $variation_id) {
-            $cart->update_item_variations($cart_item_key, $variation_id, $variations, $quantity);
+            $updated = $cart->update_item_variations($cart_item_key, $variation_id, $variations, $quantity);
+            if (is_wp_error($updated)) { wp_send_json_error(array('message' => $updated->get_error_message())); }
         } else {
             $cart->update_quantity($cart_item_key, $quantity);
         }
@@ -101,15 +118,14 @@ class Luma_Quote_Cart_Ajax
     {
         check_ajax_referer('lqc-nonce', 'nonce');
 
-        $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
-
         $cart = Luma_Quote_Cart::get_instance()->cart;
-        $cart->remove_item($product_id);
+        $key = isset($_POST['product_id']) ? sanitize_text_field(wp_unslash($_POST['product_id'])) : '';
+        $cart->remove_item($key);
 
         wp_send_json_success(array(
             'message' => __('Item removed.', 'luma-quote-cart'),
             'count' => $cart->get_cart_count(),
-            'details' => $cart->get_cart_details(),
+            'html' => Luma_Quote_Cart::get_instance()->frontend->get_cart_html(),
         ));
     }
 
@@ -121,26 +137,61 @@ class Luma_Quote_Cart_Ajax
         check_ajax_referer('lqc-nonce', 'nonce');
 
         $data = array();
-        $fields = array('lqc_name', 'lqc_company', 'lqc_email', 'lqc_phone', 'lqc_message');
-
-        foreach ($fields as $field) {
-            $data[$field] = isset($_POST[$field]) ? sanitize_text_field($_POST[$field]) : '';
+        $limits = array('lqc_name'=>100, 'lqc_company'=>120, 'lqc_email'=>254, 'lqc_phone'=>30,
+            'lqc_project'=>120, 'lqc_location'=>120, 'lqc_message'=>800);
+        foreach ($limits as $field => $limit) {
+            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? wp_unslash($_POST[$field]) : '';
+            $value = $field === 'lqc_message' ? sanitize_textarea_field($raw) : sanitize_text_field($raw);
+            if (preg_match('/.{'.($limit + 1).'}/su', $value)) {
+                wp_send_json_error(array('message'=>'Uno de los campos supera la longitud permitida.'));
+            }
+            $data[$field] = $value;
         }
-
-        if (empty($data['lqc_name']) || empty($data['lqc_phone'])) {
-            wp_send_json_error(array('message' => __('Name and Phone/WhatsApp are required.', 'luma-quote-cart')));
+        $data['lqc_shipping'] = isset($_POST['lqc_shipping']) && $_POST['lqc_shipping'] === '1';
+        if ($data['lqc_name'] === '' || !is_email($data['lqc_email']) || $data['lqc_project'] === '' || $data['lqc_location'] === '') {
+            wp_send_json_error(array('message'=>'Completa el contacto, el correo, el nombre y la ubicación del proyecto.'));
         }
-
-        $mailer = Luma_Quote_Cart::get_instance()->mailer;
-        $sent = $mailer->send_quote($data);
-
-        if ($sent) {
-            Luma_Quote_Cart::get_instance()->cart->clear_cart();
-            $success_message = get_option('lqc_success_message', __('Quote requested successfully!', 'luma-quote-cart'));
-            wp_send_json_success(array('message' => $success_message));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to send email. Please try again.', 'luma-quote-cart')));
+        $digits = preg_replace('/\D+/', '', $data['lqc_phone']);
+        if (strlen($digits) < 7 || strlen($digits) > 15 || !preg_match('/^[+0-9() .-]+$/', $data['lqc_phone'])) {
+            wp_send_json_error(array('message'=>'Revisa el teléfono de contacto e incluye el indicativo si corresponde.'));
         }
+        $data['lqc_test_copy'] = isset($_POST['lqc_test_copy']) && $_POST['lqc_test_copy'] === '1'
+            && current_user_can('manage_options');
+        if (LQC_Quote_PDF::enabled()) {
+            $plugin = Luma_Quote_Cart::get_instance();
+            try {
+                $document = LQC_Quote_PDF::issue($data, $plugin->cart->get_cart_details(),
+                    sanitize_text_field(wp_unslash($_POST['request_id'] ?? '')), $plugin->mailer,
+                    isset($_POST['lqc_quantities']) ? wp_unslash($_POST['lqc_quantities']) : null);
+            } catch (Throwable $e) {
+                wp_send_json_error(array('message' => 'No pudimos generar el documento. Revisa tu selección y vuelve a intentarlo.'));
+            }
+            wp_send_json_success($document);
+        }
+        $plugin = Luma_Quote_Cart::get_instance();
+        $request_id = sanitize_text_field(wp_unslash($_POST['request_id'] ?? ''));
+        // Older cached forms did not send an identifier in email-only mode.
+        $folio = LQC_History::folio(wp_is_uuid($request_id, 4) ? $request_id : wp_generate_uuid4());
+        $items = $plugin->cart->get_cart_details();
+        try {
+            $is_new = LQC_History::save($folio, $data, $items, 'Solicitud por correo');
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message'=>'No pudimos registrar la solicitud. Revisa la selección e inténtalo de nuevo.'));
+        }
+        $message = get_option('lqc_success_message', 'Hemos recibido tu solicitud.');
+        if ($is_new) {
+            $plugin->cart->clear_cart();
+            try {
+                if ($plugin->mailer->send_quote($data, array(), $items)) {
+                    LQC_History::mail_accepted($folio);
+                } else {
+                    $message .= ' El envío por correo quedó pendiente.';
+                }
+            } catch (Throwable $e) {
+                $message .= ' El envío por correo quedó pendiente.';
+            }
+        }
+        wp_send_json_success(array('message'=>$message, 'folio'=>$folio));
     }
 
     /**
