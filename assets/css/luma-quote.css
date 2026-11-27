@@ -18,9 +18,9 @@
     --lqc-paper: #fcfbf8;
     --lqc-brass: #80692e;
     --lqc-brand: var(--luma-yellow, #e2aa31);
-    --lqc-accent: var(--luma-action, #946b17);
-    --lqc-accent-hover: var(--luma-yellow-hover, #785400);
-    --lqc-accent-ink: var(--luma-white, #fff);
+    --lqc-accent: var(--luma-action, #e2aa31);
+    --lqc-accent-hover: var(--luma-yellow-hover, #efbe50);
+    --lqc-accent-ink: #181818;
     --lqc-sand: #ebe0c9;
     --lqc-font: 'Luma Inter', system-ui, sans-serif;
 }
@@ -76,13 +76,13 @@
 }
 #lqc-floating-basket .lqc-document-mark {
     width: 15px; height: 19px; flex: none; border: 1.5px solid currentColor; border-radius: 2px;
-    box-sizing: border-box; color: var(--lqc-brand);
+    box-sizing: border-box; color: currentColor;
     background: linear-gradient(currentColor,currentColor) 3px 5px/7px 1px no-repeat,
                 linear-gradient(currentColor,currentColor) 3px 9px/5px 1px no-repeat;
 }
 #lqc-floating-basket .lqc-count {
     display: inline-grid; place-items: center; min-width: 25px; height: 25px; padding-inline: 5px;
-    box-sizing: border-box; border-radius: 20px; background: #60430a; color: #fff;
+    box-sizing: border-box; border-radius: 20px; background: #25282a; color: #fff;
     font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums;
 }
 body.lqc-modal-open { overflow: hidden; }
@@ -204,7 +204,7 @@ body.lqc-modal-open :is(#lqc-modal-overlay,#lqc-modal) { display: block; }
         background: var(--lqc-accent); color: var(--lqc-accent-ink); box-shadow: inset 3px 0 var(--lqc-brand); font-weight: 600; text-decoration: none;
     }
     body.single-product #Content .lqc-product-actions .lqc-add-to-quote.button::before {
-        width: 17px; height: 17px; flex-basis: 17px; border-color: var(--lqc-brand);
+        width: 17px; height: 17px; flex-basis: 17px; border-color: currentColor;
     }
     body.single-product #Content .lqc-product-actions .lqc-add-to-quote.button.lqc-selected::before {
         width: 24px; height: 24px; flex-basis: 24px; color: #49360a;

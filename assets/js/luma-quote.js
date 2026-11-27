@@ -1,6 +1,22 @@
 jQuery(document).ready(function ($) {
 
 
+    // Retain BeTheme's mobile menu actions and its desktop catalogue label.
+    if (document.getElementById('luma-brand-css')) {
+        document.querySelectorAll('.mfn-header-tmpl .mfn-open-sidebar[data-sidemenu="31"] .desc-wrapper').forEach(function (label) {
+            var full = document.createElement('span');
+            full.className = 'luma-catalog-full';
+            full.textContent = label.textContent;
+            var short = document.createElement('span');
+            short.className = 'luma-catalog-short';
+            short.textContent = 'Catálogo';
+            label.replaceChildren(full, short);
+        });
+        document.querySelectorAll('.mfn-header-tmpl a.mfn-header-classic-mobile-menu-toggle').forEach(function (toggle) {
+            toggle.setAttribute('aria-label', 'Menú principal');
+        });
+    }
+
     // BeTheme product sheets put the quote shortcode below the delivery copy.
     // Move the actual controls so the keyboard order follows the desktop layout.
     var desktopSheet = window.matchMedia('(min-width: 960px)');
@@ -398,16 +414,14 @@ jQuery(document).ready(function ($) {
 
         $form.data('submitting', true);
         var data = $form.serialize();
-        if (lqc_vars.pdf_enabled) {
-            if (!$form.data('request-id')) {
-                var bytes = crypto.getRandomValues(new Uint8Array(16));
-                bytes[6] = (bytes[6] & 15) | 64;
-                bytes[8] = (bytes[8] & 63) | 128;
-                var hex = Array.from(bytes, function (n) { return n.toString(16).padStart(2, '0'); }).join('');
-                $form.data('request-id', hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'));
-            }
-            data += '&request_id=' + encodeURIComponent($form.data('request-id'));
+        if (!$form.data('request-id')) {
+            var bytes = crypto.getRandomValues(new Uint8Array(16));
+            bytes[6] = (bytes[6] & 15) | 64;
+            bytes[8] = (bytes[8] & 63) | 128;
+            var hex = Array.from(bytes, function (n) { return n.toString(16).padStart(2, '0'); }).join('');
+            $form.data('request-id', hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'));
         }
+        data += '&request_id=' + encodeURIComponent($form.data('request-id'));
         data += '&action=lqc_submit_quote&nonce=' + encodeURIComponent(lqc_vars.nonce);
         $.post(lqc_vars.ajax_url, data).done(function (response) {
             if (!response.success) {

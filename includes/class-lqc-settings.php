@@ -203,6 +203,7 @@ class Luma_Quote_Cart_Settings
             <h1>
                 <?php esc_html_e('Configuración Luma Quote Cart', 'luma-quote-cart'); ?>
             </h1>
+            <p><a class="button" href="<?php echo esc_url(admin_url('admin.php?page=luma-cotizaciones')); ?>">Ver historial de cotizaciones</a></p>
             <form action="options.php" method="post">
                 <?php
                 settings_fields($this->option_group);

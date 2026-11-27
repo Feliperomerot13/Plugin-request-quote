@@ -74,7 +74,7 @@ final class LQC_Quote_PDF
         try {
             $saved = get_transient($key);
             if (is_array($saved)) { return $saved; }
-            $folio = 'LUM-'.strtoupper(substr(str_replace('-', '', wp_generate_uuid4()), 0, 12));
+            $folio = LQC_History::folio($request_id);
             $lines = array();
             $quantities = null;
             if ($quantities_json !== null && $quantities_json !== '') {
@@ -116,6 +116,9 @@ final class LQC_Quote_PDF
                 'terms' => ($data['lqc_shipping'] ? 'Envío solicitado, pendiente de cotizar. ' : 'Envío no solicitado. ').'Transporte, instalación, disponibilidad y vigencia sujetos a confirmación del equipo comercial.',
             ));
             $bytes = $document->render();
+            if (!LQC_History::save($folio, $data, $items, 'PDF')) {
+                throw new RuntimeException('Esta cotización ya está registrada.');
+            }
             $result = array('folio' => $folio, 'pdf' => base64_encode($bytes),
                 'message' => 'Cotización generada. Puedes descargar tu PDF.');
             // Keep the generated document available on retry, including when mail fails.
@@ -130,6 +133,7 @@ final class LQC_Quote_PDF
                     if (file_put_contents($file, $bytes) !== strlen($bytes) || !$mailer->send_quote($data, array($file), $items)) {
                         $result['message'] .= ' No se confirmó el envío a ambos correos.';
                     } else {
+                        LQC_History::mail_accepted($folio);
                         $result['message'] .= ' Enviamos una copia a tu correo y al equipo de Luma.';
                     }
                 } catch (Throwable $e) {

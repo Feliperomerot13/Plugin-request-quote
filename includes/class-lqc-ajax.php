@@ -168,16 +168,30 @@ class Luma_Quote_Cart_Ajax
             }
             wp_send_json_success($document);
         }
-        $mailer = Luma_Quote_Cart::get_instance()->mailer;
-        $sent = $mailer->send_quote($data);
-
-        if ($sent) {
-            Luma_Quote_Cart::get_instance()->cart->clear_cart();
-            $success_message = get_option('lqc_success_message', __('Quote requested successfully!', 'luma-quote-cart'));
-            wp_send_json_success(array('message' => $success_message));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to send email. Please try again.', 'luma-quote-cart')));
+        $plugin = Luma_Quote_Cart::get_instance();
+        $request_id = sanitize_text_field(wp_unslash($_POST['request_id'] ?? ''));
+        // Older cached forms did not send an identifier in email-only mode.
+        $folio = LQC_History::folio(wp_is_uuid($request_id, 4) ? $request_id : wp_generate_uuid4());
+        $items = $plugin->cart->get_cart_details();
+        try {
+            $is_new = LQC_History::save($folio, $data, $items, 'Solicitud por correo');
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message'=>'No pudimos registrar la solicitud. Revisa la selección e inténtalo de nuevo.'));
         }
+        $message = get_option('lqc_success_message', 'Hemos recibido tu solicitud.');
+        if ($is_new) {
+            $plugin->cart->clear_cart();
+            try {
+                if ($plugin->mailer->send_quote($data, array(), $items)) {
+                    LQC_History::mail_accepted($folio);
+                } else {
+                    $message .= ' El envío por correo quedó pendiente.';
+                }
+            } catch (Throwable $e) {
+                $message .= ' El envío por correo quedó pendiente.';
+            }
+        }
+        wp_send_json_success(array('message'=>$message, 'folio'=>$folio));
     }
 
     /**
