@@ -1,7 +1,9 @@
 /* Luma's web palette. Keep each role consistent across BeTheme, Elementor and the quote flow. */
 :root {
-    --luma-yellow: #dba300;
-    --luma-yellow-hover: #c99400;
+    --luma-yellow: #e2aa31;
+    --luma-logo-gray: #606060;
+    --luma-action: #946b17;
+    --luma-yellow-hover: #785400;
     --luma-ink: #25282a;
     --luma-ivory: #f5f3ef;
     --luma-white: #ffffff;
@@ -13,8 +15,9 @@ body :is(.elementor-widget-button a.elementor-button:is([href$="/nosotros/"], [h
 body.single-portfolio .elementor-widget-button a.elementor-button,
 .mfn-header-tmpl .mcb-item-header_burger-inner:has(.mfn-icon-box-left),
 .luma-contact-embed .hs-button.primary {
-    background-color: var(--luma-yellow) !important;
-    color: var(--luma-ink) !important;
+    background-color: var(--luma-action) !important;
+    color: var(--luma-white) !important;
+    box-shadow: inset 3px 0 var(--luma-yellow) !important;
     border-color: var(--luma-yellow) !important;
     text-shadow: none !important;
 }
@@ -30,7 +33,7 @@ body.single-portfolio .elementor-widget-button a.elementor-button:is(:hover,:act
 .mfn-header-tmpl .mcb-item-header_burger-inner .mfn-icon-box-left :is(.desc-wrapper,.icon-wrapper,i),
 body.single-portfolio .elementor-widget-button .elementor-button span,
 body .elementor-widget-button .elementor-button:is([href$="/nosotros/"],[href$="/contacto/"],[href$="/proyectos/"]) span {
-    color: var(--luma-ink) !important;
+    color: var(--luma-white) !important;
 }
 #mfn-footer-template a.button[href$="/contacto/"] {
     color: var(--luma-ink) !important;
