@@ -301,43 +301,37 @@ class Luma_Quote_Cart_Frontend
                 <?php if (LQC_Quote_PDF::enabled()): ?>
                     <p class="lqc-note">Usaremos tu correo para enviarte una copia de la cotización.</p>
                 <?php endif; ?>
-                <!-- Configurable Fields -->
                 <?php
                 $fields = array(
-                    'name' => array('label' => get_option('lqc_label_name', 'Nombre'), 'required' => true, 'type' => 'text'),
-                    'company' => array('label' => get_option('lqc_label_company', 'Empresa'), 'required' => false, 'type' => 'text'),
-                    'email' => array('label' => get_option('lqc_label_email', 'Correo electrónico'), 'required' => false, 'type' => 'email'),
-                    'phone' => array('label' => get_option('lqc_label_phone', 'Teléfono / WhatsApp'), 'required' => true, 'type' => 'tel'),
-                    'message' => array('label' => get_option('lqc_label_message', 'Mensaje'), 'required' => false, 'type' => 'textarea'),
+                    'name' => array('Nombre de contacto', 'text', true, 'name', 100),
+                    'email' => array('Correo electrónico', 'email', true, 'email', 254),
+                    'phone' => array('Teléfono de contacto', 'tel', true, 'tel', 30),
+                    'company' => array('Empresa (opcional)', 'text', false, 'organization', 120),
+                    'project' => array('Nombre del proyecto', 'text', true, '', 120),
+                    'location' => array('Ciudad o municipio del proyecto', 'text', true, '', 120),
                 );
-
-                if (LQC_Quote_PDF::enabled()) {
-                    $fields['email']['required'] = true;
-                    $fields['phone']['required'] = false;
-                }
-                foreach ($fields as $key => $field) {
-                    $field_id = 'lqc_' . $key;
-                    $is_enabled = get_option('lqc_field_enable_' . $key, 'yes') === 'yes';
-
-                    if (!$is_enabled && !$field['required'])
-                        continue;
-
-                    $label = get_option('lqc_label_' . $key, $field['label']);
-                    $req = $field['required'] ? 'required' : '';
-                    $star = $field['required'] ? ' *' : '';
-
-                    echo '<div class="lqc-form-group lqc-field-' . esc_attr($key) . '">';
-                    echo '<label>' . esc_html($label . $star);
-
-                    if ($field['type'] === 'textarea') {
-                        echo '<textarea name="' . esc_attr($field_id) . '" ' . $req . '></textarea>';
-                    } else {
-                        echo '<input type="' . esc_attr($field['type']) . '" name="' . esc_attr($field_id) . '" ' . $req . '>';
-                    }
-                    echo '</label></div>';
-                }
-                ?>
-
+                foreach ($fields as $key => $field):
+                    if ($key === 'company' && get_option('lqc_field_enable_company', 'yes') !== 'yes') { continue; }
+                    ?>
+                    <div class="lqc-form-group">
+                        <label><?php echo esc_html($field[0].($field[2] ? ' *' : '')); ?>
+                            <input name="lqc_<?php echo esc_attr($key); ?>" type="<?php echo esc_attr($field[1]); ?>"
+                                maxlength="<?php echo (int)$field[4]; ?>" <?php if ($field[3]): ?>autocomplete="<?php echo esc_attr($field[3]); ?>"<?php endif; ?>
+                                <?php echo $field[2] ? 'required' : ''; ?>>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+                <div class="lqc-field-message">
+                    <label class="lqc-shipping-choice">
+                        <input type="checkbox" name="lqc_shipping" value="1">
+                        Solicitar cotización del envío
+                    </label>
+                </div>
+                <div class="lqc-form-group lqc-field-message">
+                    <label>Notas para la cotización (opcional)
+                        <textarea name="lqc_message" maxlength="800" rows="2"></textarea>
+                    </label>
+                </div>
                 <div class="lqc-form-actions">
                     <button type="submit"
                         class="button primary"><?php echo LQC_Quote_PDF::enabled() ? 'Generar mi cotización' : 'Enviar solicitud'; ?></button>

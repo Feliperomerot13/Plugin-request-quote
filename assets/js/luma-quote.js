@@ -25,7 +25,9 @@ jQuery(document).ready(function ($) {
             var next = container.find('.lqc-contact-form');
             if (requestId) next.data('request-id', requestId);
             values.forEach(function (field) {
-                next.find('[name]').filter(function () { return this.name === field.name; }).val(field.value);
+                var control = next.find('[name]').filter(function () { return this.name === field.name; });
+                if (control.is(':checkbox')) control.prop('checked', true);
+                else control.val(field.value);
             });
             showStep(container, inContact);
         });

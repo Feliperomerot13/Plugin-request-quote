@@ -137,16 +137,25 @@ class Luma_Quote_Cart_Ajax
         check_ajax_referer('lqc-nonce', 'nonce');
 
         $data = array();
-        $fields = array('lqc_name', 'lqc_company', 'lqc_email', 'lqc_phone', 'lqc_message');
-
-        foreach ($fields as $field) {
-            $data[$field] = isset($_POST[$field]) ? sanitize_text_field($_POST[$field]) : '';
-        }
-
-        if (LQC_Quote_PDF::enabled()) {
-            if (!$data['lqc_name'] || !is_email($data['lqc_email'])) {
-                wp_send_json_error(array('message' => 'Ingresa tu nombre y un correo válido.'));
+        $limits = array('lqc_name'=>100, 'lqc_company'=>120, 'lqc_email'=>254, 'lqc_phone'=>30,
+            'lqc_project'=>120, 'lqc_location'=>120, 'lqc_message'=>800);
+        foreach ($limits as $field => $limit) {
+            $raw = isset($_POST[$field]) && is_string($_POST[$field]) ? wp_unslash($_POST[$field]) : '';
+            $value = $field === 'lqc_message' ? sanitize_textarea_field($raw) : sanitize_text_field($raw);
+            if (preg_match('/.{'.($limit + 1).'}/su', $value)) {
+                wp_send_json_error(array('message'=>'Uno de los campos supera la longitud permitida.'));
             }
+            $data[$field] = $value;
+        }
+        $data['lqc_shipping'] = isset($_POST['lqc_shipping']) && $_POST['lqc_shipping'] === '1';
+        if ($data['lqc_name'] === '' || !is_email($data['lqc_email']) || $data['lqc_project'] === '' || $data['lqc_location'] === '') {
+            wp_send_json_error(array('message'=>'Completa el contacto, el correo, el nombre y la ubicación del proyecto.'));
+        }
+        $digits = preg_replace('/\D+/', '', $data['lqc_phone']);
+        if (strlen($digits) < 7 || strlen($digits) > 15 || !preg_match('/^[+0-9() .-]+$/', $data['lqc_phone'])) {
+            wp_send_json_error(array('message'=>'Revisa el teléfono de contacto e incluye el indicativo si corresponde.'));
+        }
+        if (LQC_Quote_PDF::enabled()) {
             $plugin = Luma_Quote_Cart::get_instance();
             try {
                 $document = LQC_Quote_PDF::issue($data, $plugin->cart->get_cart_details(),
@@ -156,10 +165,6 @@ class Luma_Quote_Cart_Ajax
             }
             wp_send_json_success($document);
         }
-        if (empty($data['lqc_name']) || empty($data['lqc_phone'])) {
-            wp_send_json_error(array('message' => __('Name and Phone/WhatsApp are required.', 'luma-quote-cart')));
-        }
-
         $mailer = Luma_Quote_Cart::get_instance()->mailer;
         $sent = $mailer->send_quote($data);
 

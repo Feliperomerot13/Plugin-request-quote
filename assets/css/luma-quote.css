@@ -167,3 +167,6 @@ body.lqc-modal-open :is(#lqc-modal-overlay,#lqc-modal) { display: block; }
     #lqc-floating-basket, :is(.lqc-add-to-quote.button,.lqc-choose.button)::before,
     :is(#lqc-modal,.lqc-cart-wrapper) :is(.lqc-continue,.lqc-form-actions .button,.lqc-download) { transition: none; animation: none; }
 }
+
+.lqc-contact-form label.lqc-shipping-choice { display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer; }
+.lqc-contact-form .lqc-shipping-choice input[type=checkbox] { appearance:auto; width:18px; min-height:18px; height:18px; margin:0; padding:0; accent-color:#655536; }

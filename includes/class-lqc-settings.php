@@ -19,6 +19,7 @@ class Luma_Quote_Cart_Settings
         }, 10, 3);
         add_action('woocommerce_admin_process_product_object', array('LQC_Quote_PDF', 'save_fields'));
         add_action('woocommerce_admin_process_variation_object', array('LQC_Quote_PDF', 'save_fields'), 10, 2);
+        add_action('admin_post_lqc_import_rates', array($this, 'import_rates'));
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'register_settings'));
     }
@@ -162,6 +163,36 @@ class Luma_Quote_Cart_Settings
         register_setting($this->option_group, 'lqc_customer_email_header', array('default' => 'Gracias por tu interés. Hemos recibido tu solicitud y pronto nos pondremos en contacto contigo con los detalles.'));
     }
 
+    public function import_rates()
+    {
+        if (!current_user_can('manage_woocommerce')) { wp_die('Acceso restringido.'); }
+        check_admin_referer('lqc_import_rates');
+        $file = $_FILES['lqc_rates'] ?? array();
+        if (($file['error'] ?? 1) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name']) || filesize($file['tmp_name']) > 524288) {
+            wp_die('Selecciona un archivo de tarifas válido de hasta 512 KB.');
+        }
+        $rates = json_decode(file_get_contents($file['tmp_name']), true);
+        if (!is_array($rates) || !$rates || count($rates) > 4000) { wp_die('El archivo de tarifas no es válido.'); }
+        foreach ($rates as $id => $row) {
+            $p = is_int($id) && $id > 0 ? wc_get_product($id) : false;
+            if (!$p || !is_array($row) || ($row['parent'] ?? 0) !== (int)($p->get_parent_id() ?: $p->get_id())
+                || !in_array($row['unit'] ?? '', array('piece','m2'), true)
+                || array_diff(array_keys($row), array('parent','unit','net','tax','color'))) {
+                wp_die('Verifica las referencias de WooCommerce. Se conservó el tarifario anterior.');
+            }
+            if (isset($row['color']) && (!is_string($row['color']) || !$p->is_type('variation') || sanitize_title($row['color']) !== $row['color'])) {
+                wp_die('El acabado del tarifario es inválido.');
+            }
+            if (!isset($row['net']) && !isset($row['tax']) && $p->is_type('variable')) { continue; }
+            if (!is_int($row['net'] ?? null) || $row['net'] <= 0 || !is_int($row['tax'] ?? null) || $row['tax'] < 0) {
+                wp_die('Hay importes inválidos. Se conservó el tarifario anterior.');
+            }
+        }
+        update_option('lqc_private_rates', $rates, false);
+        wp_safe_redirect(admin_url('admin.php?page=luma-quote-settings&rates=updated'));
+        exit;
+    }
+
     public function render_settings_page()
     {
         if (!current_user_can('manage_woocommerce')) {
@@ -178,6 +209,14 @@ class Luma_Quote_Cart_Settings
                 do_settings_sections('luma-quote-settings');
                 submit_button();
                 ?>
+            </form>
+            <h2>Tarifario privado</h2>
+            <p><?php echo esc_html(count((array)get_option('lqc_private_rates', array()))); ?> registros importados.</p>
+            <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="lqc_import_rates">
+                <?php wp_nonce_field('lqc_import_rates'); ?>
+                <label>Tarifas del cotizador <input type="file" name="lqc_rates" required accept=".json"></label>
+                <?php submit_button('Importar tarifario privado', 'secondary'); ?>
             </form>
         </div>
         <?php

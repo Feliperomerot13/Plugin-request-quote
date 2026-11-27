@@ -95,8 +95,10 @@ final class LQC_Quote_PDF
                 'logo' => self::artwork($logo_id ?: get_theme_mod('custom_logo')),
                 'folio' => $folio, 'date' => wp_date('d/m/Y'), 'items' => $lines,
                 'client' => $data['lqc_company'] ?: $data['lqc_name'],
-                'project' => $data['lqc_company'] ? $data['lqc_name'] : '',
-                'terms' => 'Transporte, instalación, disponibilidad y vigencia sujetos a confirmación del equipo comercial.',
+                'project' => implode("\n", array_filter(array($data['lqc_company'] ? $data['lqc_name'] : '',
+                    $data['lqc_phone'], $data['lqc_email'], $data['lqc_project'], $data['lqc_location']))),
+                'notes' => $data['lqc_message'],
+                'terms' => ($data['lqc_shipping'] ? 'Envío solicitado, pendiente de cotizar. ' : 'Envío no solicitado. ').'Transporte, instalación, disponibilidad y vigencia sujetos a confirmación del equipo comercial.',
             ));
             $bytes = $document->render();
             $result = array('folio' => $folio, 'pdf' => base64_encode($bytes),

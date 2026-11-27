@@ -196,6 +196,14 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
             $this->label(105, $y+23, $missing ? 'PARTIDAS VALORADAS CON IVA' : 'TOTAL DE PRODUCTOS CON IVA', 7.6, 'B');
             $this->display_text(105,$y+29,$this->money($net+$tax),24,85,'R');
         }
+        if (!empty($q['notes'])) {
+            $y += 51;
+            if ($y > 250) { $this->AddPage(); $y = 30; }
+            $this->SetTopMargin(30);
+            $this->SetAutoPageBreak(true, 23);
+            $this->label(15, $y, 'NOTAS DEL PROYECTO', 7.5, 'B');
+            $this->paragraph(15, $y+7, 178, $q['notes'], 9.1, 4.6);
+        }
         return $this->Output('S');
     }
 }

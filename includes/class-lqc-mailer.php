@@ -115,11 +115,6 @@ class Luma_Quote_Cart_Mailer
                 <?php if (!empty($customer_email)): ?>
                     <p><strong><?php esc_html_e('Email:', 'luma-quote-cart'); ?></strong> <?php echo esc_html($customer_email); ?></p>
                 <?php endif; ?>
-                <?php if (!empty($message_note)): ?>
-                    <p><strong><?php esc_html_e('Mensaje:', 'luma-quote-cart'); ?></strong><br><?php echo nl2br(esc_html($message_note)); ?>
-                    </p>
-                <?php endif; ?>
-
             <?php else: // Customer ?>
                 <h2><?php echo esc_html(get_option('lqc_customer_email_subject', 'Hemos recibido tu solicitud')); ?></h2>
                 <div>
@@ -131,8 +126,15 @@ class Luma_Quote_Cart_Mailer
                     <?php if (!empty($customer_company)): ?>
                         <?php echo esc_html($customer_company); ?><br>
                     <?php endif; ?>
-                    <?php echo esc_html($customer_phone); ?>
+                    <?php echo esc_html($customer_phone); ?><br><?php echo esc_html($customer_email); ?>
                 </p>
+            <?php endif; ?>
+
+            <p><strong>Proyecto</strong> · <?php echo esc_html($data['lqc_project']); ?><br>
+                <strong>Ubicación</strong> · <?php echo esc_html($data['lqc_location']); ?><br>
+                <strong>Envío</strong> · <?php echo $data['lqc_shipping'] ? 'Solicitado, pendiente de cotizar' : 'No solicitado'; ?></p>
+            <?php if ($message_note !== ''): ?>
+                <p><strong>Notas para la cotización</strong><br><?php echo nl2br(esc_html($message_note)); ?></p>
             <?php endif; ?>
 
             <h3><?php esc_html_e('Productos Solicitados', 'luma-quote-cart'); ?></h3>

@@ -9,7 +9,8 @@ final class LQC_Tariff
         static $rates = null;
         if ($rates === null) {
             $file = __DIR__.'/site-tariffs.php';
-            $rates = is_file($file) ? require $file : array();
+            $rates = get_option('lqc_private_rates', null);
+            if (!is_array($rates)) { $rates = is_file($file) ? require $file : array(); }
         }
         return $rates[$parent_id] ?? array();
     }
