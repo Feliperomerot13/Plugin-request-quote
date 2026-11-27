@@ -209,7 +209,7 @@ class Luma_Quote_Cart_Frontend
             <div id="lqc-modal" role="dialog" aria-modal="true" aria-labelledby="lqc-modal-heading">
                 <div class="lqc-modal-header">
                     <h3 id="lqc-modal-heading">
-                        <?php esc_html_e('Solicitar Cotización', 'luma-quote-cart'); ?>
+                        <?php esc_html_e('Mi cotización', 'luma-quote-cart'); ?>
                     </h3>
                     <button type="button" aria-label="Cerrar cotización" class="lqc-close-modal">&times;</button>
                 </div>
@@ -241,7 +241,14 @@ class Luma_Quote_Cart_Frontend
             echo '<p class="lqc-empty">' . esc_html__('Tu lista de cotización está vacía.', 'luma-quote-cart') . '</p>';
         } else {
             ?>
+            <ol class="lqc-steps" aria-label="Pasos de la cotización">
+                <li aria-current="step"><span>1</span> Productos</li>
+                <li><span>2</span> Datos del proyecto</li>
+            </ol>
             <div class="lqc-items-list">
+                <?php if (LQC_Quote_PDF::enabled()): ?>
+                    <p class="lqc-note">Revisa las cantidades. Verás los precios al generar tu PDF.</p>
+                <?php endif; ?>
                 <?php foreach ($cart as $item): ?>
                     <div class="lqc-item" data-id="<?php echo esc_attr($item['cart_key']); ?>">
                         <div class="lqc-item-image">
@@ -289,7 +296,10 @@ class Luma_Quote_Cart_Frontend
 
             <button type="button" class="button lqc-continue">Continuar con mis datos</button>
             <form class="lqc-contact-form" hidden>
-                <button type="button" class="lqc-back">Volver a mis productos</button>
+                <button type="button" class="lqc-back">← Volver a mis productos</button>
+                <?php if (LQC_Quote_PDF::enabled()): ?>
+                    <p class="lqc-note">Usaremos tu correo para enviarte una copia de la cotización.</p>
+                <?php endif; ?>
                 <!-- Configurable Fields -->
                 <?php
                 $fields = array(
@@ -315,7 +325,7 @@ class Luma_Quote_Cart_Frontend
                     $req = $field['required'] ? 'required' : '';
                     $star = $field['required'] ? ' *' : '';
 
-                    echo '<div class="lqc-form-group">';
+                    echo '<div class="lqc-form-group lqc-field-' . esc_attr($key) . '">';
                     echo '<label>' . esc_html($label . $star);
 
                     if ($field['type'] === 'textarea') {

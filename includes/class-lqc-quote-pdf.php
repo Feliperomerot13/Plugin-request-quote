@@ -46,10 +46,10 @@ final class LQC_Quote_PDF
         }
     }
 
-    private static function artwork($id)
+    private static function artwork($id, $size = 'medium')
     {
         if (!$id) { return ''; }
-        $image = image_get_intermediate_size($id, 'medium');
+        $image = image_get_intermediate_size($id, $size);
         $original = get_attached_file($id);
         if (!$original) { return ''; }
         return !empty($image['file']) ? dirname($original).'/'.basename($image['file']) : $original;
@@ -91,6 +91,7 @@ final class LQC_Quote_PDF
             require_once __DIR__.'/class-lqc-document.php';
             $logo_id = attachment_url_to_postid((string) get_option('lqc_email_logo'));
             $document = new LQC_Document(array(
+                'cover' => self::artwork(attachment_url_to_postid((string) get_option('lqc_pdf_cover')), 'large'),
                 'logo' => self::artwork($logo_id ?: get_theme_mod('custom_logo')),
                 'folio' => $folio, 'date' => wp_date('d/m/Y'), 'items' => $lines,
                 'client' => $data['lqc_company'] ?: $data['lqc_name'],

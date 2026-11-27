@@ -14,6 +14,7 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
     {
         parent::__construct();
         $this->quote = $quote;
+        $this->AddFont('InstrumentSerif', '', 'InstrumentSerif.json', dirname(__DIR__).'/assets/fonts/');
         $this->SetMargins(16, 16, 16);
         $this->SetAutoPageBreak(false);
         $this->SetTitle('Cotización · Luma Arquitectura', true);
@@ -41,7 +42,7 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
         $this->Line(16, $y, 194, $y);
     }
 
-    private function picture($file, $x, $y, $width, $height)
+    private function picture($file, $x, $y, $width, $height, $cover = false)
     {
         if (!$file || !is_file($file)) {
             return false;
@@ -50,36 +51,44 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
         if (!$info || !in_array($info[2], array(IMAGETYPE_JPEG, IMAGETYPE_PNG), true)) {
             return false;
         }
-        $ratio = min($width / $info[0], $height / $info[1]);
+        $ratio = $cover ? max($width / $info[0], $height / $info[1])
+                        : min($width / $info[0], $height / $info[1]);
         $iw = $ratio * $info[0];
         $ih = $ratio * $info[1];
+        if ($cover) {
+            $this->_out(sprintf('q %.3F %.3F %.3F %.3F re W n', $x*$this->k, ($this->h-$y-$height)*$this->k,
+                $width*$this->k, $height*$this->k));
+        }
         try {
             $this->Image($file, $x + ($width-$iw)/2, $y + ($height-$ih)/2,
                 $iw, $ih, $info[2] === IMAGETYPE_JPEG ? 'JPEG' : 'PNG');
         } catch (Exception $e) {
             return false;
+        } finally {
+            if ($cover) { $this->_out('Q'); }
         }
         return true;
     }
 
     public function Header()
     {
-        $this->SetTextColor(34, 36, 34);
-        if (!$this->picture($this->quote['logo'], 16, 11, 39, 12)) {
-            $this->label(16, 11, 'LUMA', 21, 'B');
-            $this->label(16, 19, 'A R Q U I T E C T U R A', 7);
+        $this->SetTextColor(45, 46, 40);
+        if (!$this->picture($this->quote['logo'], 15, 7, 35, 12)) {
+            $this->label(15, 8, 'LUMA', 20, 'B');
+            $this->label(15, 15, 'A R Q U I T E C T U R A', 6.5);
         }
-        $this->label(100, 11, $this->quote['folio'], 10, 'B', 94, 'R');
-        $this->label(100, 18, $this->quote['date'], 9, '', 94, 'R');
-        $this->rule(29);
+        $this->label(106, 7, $this->quote['folio'], 9.5, 'B', 89, 'R');
+        $this->label(106, 13, $this->quote['date'], 8.5, '', 89, 'R');
+        if ($this->PageNo() > 1) { $this->rule(24); }
     }
 
     public function Footer()
     {
         $this->rule(281);
-        $this->SetTextColor(81, 83, 79);
-        $this->label(16, 284, 'Luma Arquitectura   /   lumaa.co', 8);
-        $this->label(143, 284, $this->PageNo().' / {nb}', 8, '', 51, 'R');
+        $this->SetTextColor(86, 86, 77);
+        $this->label(15, 283, 'Luma Arquitectura', 8, 'B');
+        $this->label(56, 283, 'lumaa.co', 8);
+        $this->label(151, 283, $this->PageNo().'  /  {nb}', 8, '', 44, 'R');
     }
 
     private function money($value)
@@ -87,89 +96,104 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
         return '$ '.number_format($value, 0, ',', '.');
     }
 
+    private function display_text($x, $y, $text, $points, $width, $alignment = 'L')
+    {
+        $this->SetXY($x, $y);
+        $this->SetFont('InstrumentSerif', '', $points);
+        $this->Cell($width, $points * 0.38, $this->letters($text), 0, 0, $alignment);
+    }
+
+    private function paragraph($x, $y, $width, $text, $size, $leading, $style = '')
+    {
+        $this->SetFont('Helvetica', $style, $size);
+        $this->SetXY($x, $y);
+        $this->MultiCell($width, $leading, $this->letters($text), 0, 'L');
+        return $this->GetY();
+    }
+
     private function table_head($y)
     {
-        $this->SetFillColor(239, 238, 232);
-        $this->Rect(16, $y, 178, 10, 'F');
-        $this->SetTextColor(52, 54, 49);
-        $this->label(19, $y+2, 'Producto', 9, 'B');
-        $this->label(99, $y+2, 'Cantidad', 9, 'B', 22, 'R');
-        $this->label(121, $y+2, 'Unitario', 9, 'B', 35, 'R');
-        $this->label(156, $y+2, 'Importe', 9, 'B', 35, 'R');
-        return $y+10;
+        $this->SetTextColor(87, 87, 77);
+        $this->label(15, $y, 'PRODUCTO', 7.5, 'B');
+        $this->label(97, $y, 'CANTIDAD', 7.5, 'B', 23, 'R');
+        $this->label(120, $y, 'UNITARIO', 7.5, 'B', 35, 'R');
+        $this->label(155, $y, 'IMPORTE', 7.5, 'B', 40, 'R');
+        $this->rule($y+8);
+        return $y+8;
     }
 
     public function render()
     {
         $q = $this->quote;
         $this->AddPage();
-        $this->SetXY(15, 35);
-        $this->SetFont('Times', '', 38);
-        $this->Cell(158, 17, $this->letters('Cotización'));
-        $this->SetFillColor(228, 178, 50);
-        $this->Rect(16, 55, 15, 1.4, 'F');
-        $this->label(16, 61, 'PREPARADA PARA', 7.8, 'B');
-        $this->SetXY(16, 69);
-        $this->SetFont('Helvetica', 'B', 13);
-        $this->MultiCell(175, 6, $this->letters($q['client']));
-        $this->SetFont('Helvetica', '', 10);
-        $this->MultiCell(175, 5, $this->letters($q['project']));
-        $y = $this->GetY()+7;
-        $this->label(16, $y, 'Selección de productos', 14, 'B');
-        $this->label(118, $y, 'COP   /   Valores antes de IVA', 8.5, '', 76, 'R');
-        $y = $this->table_head($y+9);
+        $hero = $this->picture($q['cover'] ?? '', 0, 25, 210, 62, true);
+        $title_y = $hero ? 77 : 31;
+        // The title begins on a paper-colored inset at the foot of the photograph.
+        $this->SetFillColor(255, 255, 255);
+        $this->Rect(0, $title_y, 98, 25, 'F');
+        $this->SetTextColor(38, 42, 37);
+        $this->display_text(14, $title_y+2, 'Cotización', 47, 82);
+        $y = $title_y+12;
+        $this->SetTextColor(103, 98, 85);
+        $this->label(108, $y, 'PREPARADA PARA', 7.4, 'B');
+        $this->SetTextColor(38, 42, 37);
+        $y = $this->paragraph(108, $y+6, 87, $q['client'], 11.2, 5, 'B');
+        if ($q['project'] !== '') { $y = $this->paragraph(108, $y+1, 87, $q['project'], 9, 4.4); }
+        $y = max($y+6, $title_y+29);
+        $this->display_text(15, $y, 'Selección de productos', 20, 100);
+        $this->label(112, $y+1, 'Pesos colombianos  /  Valores antes de IVA', 8, '', 83, 'R');
+        $y = $this->table_head($y+11);
         $net = 0; $tax = 0; $missing = 0;
         foreach ($q['items'] as $line) {
-            if ($y > 230) {
+            if ($y > 240) {
                 $this->AddPage();
-                $y = $this->table_head(37);
+                $y = $this->table_head(30);
             }
-            $this->picture($line['image'], 17, $y+2, 25, 20);
-            $this->SetTextColor(34, 36, 34);
-            $this->SetXY(45, $y+4);
-            $this->SetFont('Helvetica', 'B', 11);
-            $this->MultiCell(54, 4.7, $this->letters($line['name']));
-            $this->SetXY(45, $this->GetY()+1);
-            $this->SetFont('Helvetica', '', 8.3);
-            $this->MultiCell(54, 4.1, $this->letters($line['detail']));
-            $bottom = max($y+25, $this->GetY()+3);
-            $this->label(98, $y+8, $line['qty'].' '.$line['unit'], 9.5, '', 23, 'R');
+            $this->picture($line['image'], 16, $y+2, 29, 19);
+            $this->SetTextColor(38, 42, 37);
+            $bottom = $this->paragraph(49, $y+6, 49, $line['name'], 11, 4.6, 'B');
+            $this->SetTextColor(87, 87, 77);
+            if ($line['detail'] !== '') {
+                $bottom = $this->paragraph(49, $bottom+1, 49, $line['detail'], 8.6, 4.1);
+            }
+            $bottom = max($y+24, $bottom+4);
+            $this->SetTextColor(38, 42, 37);
+            $quantity = str_replace('.', ',', (string) $line['qty']);
+            $this->label(97, $y+8, $quantity.' '.$line['unit'], 9.6, '', 23, 'R');
             if ($line['net'] === null) {
                 $missing++;
-                $this->label(122, $y+8, 'En revisión', 9, '', 69, 'R');
+                $this->label(122, $y+8, 'En revisión', 9, '', 73, 'R');
             } else {
                 $base = round($line['qty']*$line['net']);
                 $net += $base;
                 $tax += round($line['qty']*$line['tax']);
-                $this->label(121, $y+8, $this->money($line['net']), 9.5, '', 35, 'R');
-                $this->label(156, $y+8, $this->money($base), 10, 'B', 35, 'R');
+                $this->label(120, $y+8, $this->money($line['net']), 9.8, '', 35, 'R');
+                $this->label(155, $y+8, $this->money($base), 10.2, 'B', 40, 'R');
             }
             $this->rule($bottom);
             $y = $bottom;
         }
-        if ($y > 211) { $this->AddPage(); $y = 37; }
-        $y += 5;
+        if ($y > 220) { $this->AddPage(); $y = 33; }
+        $y += 8;
+        $this->SetTextColor(87, 87, 77);
+        $this->label(15, $y, 'CONDICIONES', 7.5, 'B');
+        $notes = $missing ? 'Las partidas en revisión quedan pendientes de valoración. ' : '';
+        $this->paragraph(15, $y+8, 79, $notes.$q['terms'], 9.1, 4.6);
+
         if ($missing < count($q['items'])) {
-            $this->label(98,$y,'Subtotal sin IVA',9.5);
-            $this->label(150,$y,$this->money($net),10,'',42,'R');
-            $this->label(98,$y+7,'IVA de productos',9.5);
-            $this->label(150,$y+7,$this->money($tax),10,'',42,'R');
-            $y+=17;
-            $this->SetFillColor(38,42,40);
-            $this->Rect(16,$y,178,17,'F');
-            $this->SetTextColor(255,255,255);
-            $this->label(20,$y+5,$missing ? 'Partidas valoradas con IVA' : 'Total de productos con IVA',12,'B');
-            $this->label(131,$y+5,$this->money($net+$tax),16,'B',59,'R');
-            $y+=22;
+            $this->SetFillColor(243, 241, 234);
+            $this->Rect(101, $y, 94, 46, 'F');
+            $this->SetTextColor(66, 68, 60);
+            $this->label(105,$y+4,'Subtotal sin IVA',9);
+            $this->label(148,$y+4,$this->money($net),9.5,'',42,'R');
+            $this->label(105,$y+11,'IVA de productos',9);
+            $this->label(148,$y+11,$this->money($tax),9.5,'',42,'R');
+            $this->SetDrawColor(198, 193, 174);
+            $this->Line(106, $y+21, 189, $y+21);
+            $this->SetTextColor(38, 42, 37);
+            $this->label(105, $y+23, $missing ? 'PARTIDAS VALORADAS CON IVA' : 'TOTAL DE PRODUCTOS CON IVA', 7.6, 'B');
+            $this->display_text(105,$y+29,$this->money($net+$tax),29,85,'R');
         }
-        $this->SetTextColor(34,36,34);
-        $this->label(16,$y,'Alcance de la cotización',10,'B');
-        $this->SetXY(16,$y+7);
-        $this->SetFont('Helvetica','',9.2);
-        if ($missing) {
-            $this->MultiCell(176,4.6,$this->letters('Las partidas en revisión requieren confirmación comercial y se presentan sin importe.'));
-        }
-        $this->MultiCell(176,4.6,$this->letters($q['terms']));
         return $this->Output('S');
     }
 }

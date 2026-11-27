@@ -153,6 +153,10 @@ class Luma_Quote_Cart_Settings
             array('id' => 'lqc_customer_email_header', 'default' => 'Gracias por tu interés. Hemos recibido tu solicitud y pronto nos pondremos en contacto contigo con los detalles.')
         );
 
+        register_setting($this->option_group, 'lqc_pdf_cover', array('sanitize_callback' => 'esc_url_raw'));
+        add_settings_field('lqc_pdf_cover', 'Fotografía de la cotización PDF', array($this, 'render_text_field'),
+            'luma-quote-settings', 'lqc_general_section', array('id' => 'lqc_pdf_cover',
+            'desc' => 'URL de una fotografía panorámica JPEG o PNG de la biblioteca de medios. Es opcional.'));
         register_setting($this->option_group, 'lqc_email_logo');
         register_setting($this->option_group, 'lqc_customer_email_subject', array('default' => 'Hemos recibido tu solicitud de cotización'));
         register_setting($this->option_group, 'lqc_customer_email_header', array('default' => 'Gracias por tu interés. Hemos recibido tu solicitud y pronto nos pondremos en contacto contigo con los detalles.'));

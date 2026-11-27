@@ -3,6 +3,7 @@ jQuery(document).ready(function ($) {
     function showStep(container, contact) {
         container.find('.lqc-items-list, .lqc-continue').prop('hidden', contact);
         container.find('.lqc-contact-form').prop('hidden', !contact);
+        container.find('.lqc-steps li').removeAttr('aria-current').eq(contact ? 1 : 0).attr('aria-current', 'step');
     }
 
     $(document).on('click', '.lqc-continue, .lqc-back', function () {
@@ -150,6 +151,7 @@ jQuery(document).ready(function ($) {
     $(document).on('click', '.lqc-toggle-modal', function (e) {
         e.preventDefault();
         $('body').addClass('lqc-modal-open');
+        $('#lqc-modal .lqc-close-modal').trigger('focus');
     });
 
     $(document).on('click', '.lqc-close-modal, #lqc-modal-overlay', function (e) {
@@ -274,6 +276,7 @@ jQuery(document).ready(function ($) {
                 return;
             }
             var box = $('<div>', {class: 'lqc-result', role: 'status'});
+            $('<h3>').text(response.data.pdf ? 'Tu cotización está lista' : 'Solicitud recibida').appendTo(box);
             $('<p>').text(response.data.message).appendTo(box);
             if (response.data.pdf) {
                 var binary = atob(response.data.pdf);
