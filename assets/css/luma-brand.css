@@ -11,7 +11,7 @@
 }
 
 body :is(.elementor-widget-button a.elementor-button:is([href$="/nosotros/"], [href$="/contacto/"], [href$="/proyectos/"]),
-         .rev-btn[href*="/portfolio-item/"]),
+         :is(.rev-btn,.sr7-btn)[href*="/portfolio-item/"]),
 body.single-portfolio .elementor-widget-button a.elementor-button,
 .mfn-header-tmpl .mcb-item-header_burger-inner:has(.mfn-icon-box-left),
 .luma-contact-embed .hs-button.primary {
@@ -22,7 +22,7 @@ body.single-portfolio .elementor-widget-button a.elementor-button,
     text-shadow: none !important;
 }
 body :is(.elementor-widget-button a.elementor-button:is([href$="/nosotros/"], [href$="/contacto/"], [href$="/proyectos/"]),
-         .rev-btn[href*="/portfolio-item/"]):is(:hover,:active),
+         :is(.rev-btn,.sr7-btn)[href*="/portfolio-item/"]):is(:hover,:active),
 body.single-portfolio .elementor-widget-button a.elementor-button:is(:hover,:active),
 .mfn-header-tmpl .mcb-item-header_burger-inner:has(.mfn-icon-box-left:is(:hover,:active)),
 .luma-contact-embed .hs-button.primary:is(:hover,:active) {
@@ -51,7 +51,7 @@ body .elementor-widget-button .elementor-button:is([href$="/nosotros/"],[href$="
 .home :is(.elementor-widget-text-editor,.elementor-widget-heading) a[href$="/proyectos/"] {
     color: var(--luma-link) !important; text-decoration: underline; text-underline-offset: .16em;
 }
-body :is(.elementor-widget-button a.elementor-button,.rev-btn,.mfn-icon-box-left,#mfn-footer-template a.button):focus-visible,
+body :is(.elementor-widget-button a.elementor-button,.rev-btn,.sr7-btn,.mfn-icon-box-left,#mfn-footer-template a.button):focus-visible,
 .luma-contact-embed .hs-button.primary:focus-visible {
     outline: 2px solid var(--luma-ink) !important;
     outline-offset: 2px;
