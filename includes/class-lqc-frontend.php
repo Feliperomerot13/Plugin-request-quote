@@ -31,8 +31,16 @@ class Luma_Quote_Cart_Frontend
 
     public function enqueue_scripts()
     {
+        $styles = array();
+        if (in_array(wp_parse_url(home_url(), PHP_URL_HOST), array('lumaa.co', 'www.lumaa.co'), true)) {
+            wp_enqueue_style('luma-brand', LUMA_QUOTE_URL . 'assets/css/luma-brand.css', array(), LUMA_QUOTE_VERSION);
+            $styles[] = 'luma-brand';
+            if (is_page('contacto')) {
+                wp_enqueue_script('luma-contact-brand', LUMA_QUOTE_URL . 'assets/js/luma-contact-brand.js', array(), LUMA_QUOTE_VERSION, true);
+            }
+        }
         wp_enqueue_style('dashicons');
-        wp_enqueue_style('luma-quote-cart', LUMA_QUOTE_URL . 'assets/css/luma-quote.css', array(), LUMA_QUOTE_VERSION);
+        wp_enqueue_style('luma-quote-cart', LUMA_QUOTE_URL . 'assets/css/luma-quote.css', $styles, LUMA_QUOTE_VERSION);
         wp_enqueue_script('luma-quote-cart', LUMA_QUOTE_URL . 'assets/js/luma-quote.js', array('jquery'), LUMA_QUOTE_VERSION, true);
 
         wp_localize_script('luma-quote-cart', 'lqc_vars', array(
