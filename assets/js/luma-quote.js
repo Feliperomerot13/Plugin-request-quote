@@ -3,6 +3,10 @@ jQuery(document).ready(function ($) {
 
     // Retain BeTheme's mobile menu actions and its desktop catalogue label.
     if (document.getElementById('luma-brand-css')) {
+        // BeTheme can supply its own untranslated pagination label.
+        document.querySelectorAll('.mfn-archive-product-tmpl-builder a.pager_load_more .button_label').forEach(function (label) {
+            if (label.textContent.trim().toLowerCase() === 'load more') label.textContent = 'Ver más productos';
+        });
         document.querySelectorAll('.mfn-header-tmpl .mfn-open-sidebar[data-sidemenu="31"] .desc-wrapper').forEach(function (label) {
             var full = document.createElement('span');
             full.className = 'luma-catalog-full';
