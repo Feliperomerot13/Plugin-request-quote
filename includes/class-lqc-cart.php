@@ -75,6 +75,10 @@ class Luma_Quote_Cart_Cart
             );
         }
 
+        // A visitor only needs a session once a valid reference is selected.
+        if (!WC()->session->has_session()) {
+            WC()->session->set_customer_session_cookie(true);
+        }
         WC()->session->set($this->session_key, $cart);
         return true;
     }

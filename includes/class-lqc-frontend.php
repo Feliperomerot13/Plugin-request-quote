@@ -9,6 +9,7 @@ class Luma_Quote_Cart_Frontend
     public function __construct()
     {
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
+        add_action('template_redirect', array($this, 'protect_private_quote'));
 
         // Button hooks
         add_action('woocommerce_after_shop_loop_item', array($this, 'add_button_loop'), 15);
@@ -27,6 +28,14 @@ class Luma_Quote_Cart_Frontend
         add_shortcode('luma_quote_button', array($this, 'shortcode_button'));
         add_shortcode('luma_quote_basket', array($this, 'shortcode_basket'));
         add_shortcode('luma_quote_cart', array($this, 'shortcode_cart'));
+    }
+
+    public function protect_private_quote()
+    {
+        $quote_page = (int) get_option('lqc_quote_page_id');
+        if (($quote_page && is_page($quote_page)) || Luma_Quote_Cart::get_instance()->cart->get_cart_items()) {
+            wc_nocache_headers();
+        }
     }
 
     public function enqueue_scripts()

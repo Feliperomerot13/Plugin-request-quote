@@ -113,12 +113,15 @@ jQuery(document).ready(function ($) {
         resetActions($(this).closest('.product, .lqc-shortcode-container, form.cart').find('.lqc-add-to-quote'));
     });
 
-    // AJAX Fragment Refresh for caching
+    var pendingRefresh = null;
+    var fragmentsReady = false;
     function refreshCartFragments() {
-        $.post(lqc_vars.ajax_url, {
+        if (pendingRefresh) return pendingRefresh;
+        pendingRefresh = $.post(lqc_vars.ajax_url, {
             action: 'lqc_get_fragments'
         }, function(response) {
             if (response.success && response.data) {
+                fragmentsReady = true;
                 updateCounter(response.data.count);
                 if (response.data.html) {
                     refreshView(response.data.html);
@@ -128,10 +131,31 @@ jQuery(document).ready(function ($) {
                 }
             }
         });
+        pendingRefresh.always(function () { pendingRefresh = null; });
+        return pendingRefresh;
     }
 
-    // Bypass cache immediately on load
-    refreshCartFragments();
+    // A cached anonymous page is usable without a session or a trip to admin-ajax.
+    var rememberedSelection = false;
+    try { rememberedSelection = localStorage.getItem('lqc_has_items') === '1'; } catch (error) {}
+    if (rememberedSelection || $('.lqc-cart-wrapper').length || Number($('.lqc-count').first().text()) > 0) {
+        refreshCartFragments();
+    }
+
+    function addReference(payload) {
+        function send() {
+            payload.nonce = lqc_vars.nonce;
+            return $.post(lqc_vars.ajax_url, payload);
+        }
+        return $.when(pendingRefresh).then(send).then(null, function (xhr) {
+            // Only retry a nonce rejection: WordPress did not execute the write.
+            if (xhr.status === 403 && String(xhr.responseText).trim() === '-1') {
+                return refreshCartFragments().then(send);
+            }
+            return $.Deferred().reject(xhr).promise();
+        });
+    }
+
     $(document).on('click', '.lqc-add-to-quote', function (e) {
         e.preventDefault();
         var $btn = $(this);
@@ -199,16 +223,16 @@ jQuery(document).ready(function ($) {
 
         $btn.addClass('loading').attr('aria-busy', 'true').prop('disabled', true);
 
-        $.post(lqc_vars.ajax_url, {
+        addReference({
             action: 'lqc_add_to_quote',
-            nonce: lqc_vars.nonce,
             product_id: product_id,
             quantity: quantity,
             variation_id: variation_id,
             variations: variations
-        }, function (response) {
+        }).done(function (response) {
             $btn.removeClass('loading');
             if (response.success) {
+                fragmentsReady = true;
                 $('.lqc-announcement').text('Producto añadido a tu cotización.');
                 if ($('#lqc-modal').length || lqc_vars.quote_page_url) {
                     var label = $btn.find('.lqc-action-label');
@@ -238,6 +262,10 @@ jQuery(document).ready(function ($) {
 
     // Update Counter
     function updateCounter(count) {
+        try {
+            if (Number(count) > 0) localStorage.setItem('lqc_has_items', '1');
+            else localStorage.removeItem('lqc_has_items');
+        } catch (error) {}
         $('.lqc-count').text(count);
         if (Number(count) === 0) resetActions($('.lqc-selected'));
     }
@@ -249,6 +277,7 @@ jQuery(document).ready(function ($) {
     }
 
     function openModal(trigger) {
+        if (!fragmentsReady) refreshCartFragments();
         opener = trigger;
         $('body').addClass('lqc-modal-open');
         $('#lqc-modal .lqc-close-modal').trigger('focus');
