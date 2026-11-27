@@ -45,7 +45,7 @@ class Luma_Quote_Cart_Cart
         if (!$parent || $parent->get_status() !== 'publish') {
             return new WP_Error('invalid_product', 'Esta referencia ya no está disponible.');
         }
-        if (!$variation_id && !empty($variations)) {
+        if ($parent->is_type('variable') && !$variation_id && !empty($variations)) {
             $data_store = WC_Data_Store::load('product');
             $match = $data_store->find_matching_product_variation(wc_get_product($product_id), $variations);
             if ($match) $variation_id = $match;
@@ -219,7 +219,7 @@ class Luma_Quote_Cart_Cart
                     'image' => $product->get_image(),
                     'image_url' => $image_url,
                     'quantity' => $item['quantity'],
-                    'unit' => $product->get_meta('_lqc_unit') === 'm2' ? 'm²' : 'ud.',
+                    'unit' => LQC_Tariff::unit($product) === 'm2' ? 'm²' : 'ud.',
                     'variations' => $variations_formatted,
                     'raw_variations' => isset($item['variations']) ? $item['variations'] : array()
                 );

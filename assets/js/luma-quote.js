@@ -122,7 +122,13 @@ jQuery(document).ready(function ($) {
         }, function (response) {
             $btn.removeClass('loading');
             if (response.success) {
-                $btn.text(lqc_vars.strings.added);
+                var status = $btn.next('.lqc-status');
+                if (!status.length) status = $('<span>', {class:'lqc-status',role:'status'}).insertAfter($btn);
+                status.empty().append(document.createTextNode('Agregado. '));
+                if ($('#lqc-modal').length || lqc_vars.quote_page_url) {
+                    $('<button>', {type:'button', class:'lqc-view-selection ' + ($('#lqc-modal').length ? 'lqc-toggle-modal' : 'lqc-go-to-page')})
+                        .text('Ver mi cotización').appendTo(status);
+                }
                 updateCounter(response.data.count);
 
                 // Update Modal Content with fresh HTML
@@ -147,23 +153,33 @@ jQuery(document).ready(function ($) {
         $('.lqc-count').text(count);
     }
 
+    var opener;
+    function closeModal() {
+        $('body').removeClass('lqc-modal-open');
+        if (opener && opener.isConnected) opener.focus();
+    }
+
     // Toggle Modal
     $(document).on('click', '.lqc-toggle-modal', function (e) {
         e.preventDefault();
+        opener = this;
         $('body').addClass('lqc-modal-open');
         $('#lqc-modal .lqc-close-modal').trigger('focus');
     });
 
     $(document).on('click', '.lqc-close-modal, #lqc-modal-overlay', function (e) {
         e.preventDefault();
-        $('body').removeClass('lqc-modal-open');
+        closeModal();
     });
 
     $(document).on('keydown', function (event) {
-        if (event.key === 'Escape' && $('body').hasClass('lqc-modal-open')) {
-            $('body').removeClass('lqc-modal-open');
-            $('#lqc-floating-basket').trigger('focus');
-        }
+        if (!$('body').hasClass('lqc-modal-open')) return;
+        if (event.key === 'Escape') closeModal();
+        if (event.key !== 'Tab') return;
+        var controls = $('#lqc-modal').find('a[href], button:enabled, input:enabled, textarea:enabled, select:enabled').filter(':visible');
+        var first = controls.get(0), last = controls.get(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
 
     // Go to Page (if popup disabled)
@@ -185,12 +201,9 @@ jQuery(document).ready(function ($) {
             product_id: product_id
         }, function (response) {
             if (response.success) {
-                $item.slideUp(function () { $(this).remove(); });
+                if (response.data.html) refreshView(response.data.html);
                 updateCounter(response.data.count);
-                if (response.data.count === 0) {
-                    // Refresh to show empty message or handle via JS
-                    location.reload();
-                }
+
             }
         });
     });

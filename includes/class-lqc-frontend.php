@@ -108,7 +108,7 @@ class Luma_Quote_Cart_Frontend
                             <label style="display:block; font-size:13px; font-weight:bold; margin-bottom:5px; color:#555;">
                                 <?php echo wc_attribute_label($attribute_name); ?>:
                             </label>
-                            <select class="lqc-shortcode-variation-select" data-attribute_name="attribute_<?php echo esc_attr($attribute_name); ?>" style="width: 100%; max-width: 300px; padding: 10px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; font-size: 14px; box-shadow: none; outline: none;">
+                            <select class="lqc-shortcode-variation-select" data-attribute_name="attribute_<?php echo esc_attr(sanitize_title($attribute_name)); ?>" style="width: 100%; max-width: 300px; padding: 10px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; font-size: 14px; box-shadow: none; outline: none;">
                                 <option value=""><?php esc_html_e('Elegir', 'woocommerce'); ?></option>
                                 <?php foreach ($options as $option): ?>
                                     <option value="<?php echo esc_attr($option); ?>">
@@ -133,7 +133,7 @@ class Luma_Quote_Cart_Frontend
     {
         global $product;
         if ($product && $product->is_type('variable')) {
-            echo '<a class="button lqc-choose" href="'.esc_url($product->get_permalink()).'">Elegir opciones</a>';
+            echo '<a class="button lqc-choose" href="'.esc_url($product->get_permalink()).'">Elegir opciones para cotizar</a>';
             return;
         }
         $this->render_button();
@@ -164,12 +164,12 @@ class Luma_Quote_Cart_Frontend
         $count = Luma_Quote_Cart::get_instance()->cart->get_cart_count();
         ob_start();
         ?>
-        <div class="lqc-basket-shortcode lqc-toggle-modal">
+        <button type="button" aria-label="Ver mi cotización" class="lqc-basket-shortcode <?php echo get_option('lqc_enable_popup', 'yes') === 'yes' ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
             <span class="dashicons dashicons-cart"></span>
             <span class="lqc-count">
                 <?php echo esc_html($count); ?>
             </span>
-        </div>
+        </button>
         <?php
         return ob_get_clean();
     }
@@ -268,11 +268,11 @@ class Luma_Quote_Cart_Frontend
                             if ($parent_product && $parent_product->is_type('variable')): 
                                 $attributes = $parent_product->get_variation_attributes();
                                 foreach ($attributes as $attribute_name => $options):
-                                    $selected_val = isset($item['raw_variations']['attribute_' . $attribute_name]) ? $item['raw_variations']['attribute_' . $attribute_name] : '';
+                                    $selected_val = isset($item['raw_variations']['attribute_' . sanitize_title($attribute_name)]) ? $item['raw_variations']['attribute_' . sanitize_title($attribute_name)] : '';
                                     ?>
                                     <div class="lqc-variation-field" style="margin-top: 5px;">
                                         <label style="font-size: 11px; display: block; color: #555; font-weight: bold;"><?php echo wc_attribute_label($attribute_name); ?>:</label>
-                                        <select class="lqc-change-variation" data-attribute_name="attribute_<?php echo esc_attr($attribute_name); ?>" style="font-size: 12px; padding: 4px; width: 100%; max-width: 150px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; box-shadow: none; outline: none;">
+                                        <select class="lqc-change-variation" data-attribute_name="attribute_<?php echo esc_attr(sanitize_title($attribute_name)); ?>" style="font-size: 12px; padding: 4px; width: 100%; max-width: 150px; border: 1px solid #d1d1d1; border-radius: 4px; background-color: #f7f7f7; color: #333; box-shadow: none; outline: none;">
                                             <option value=""><?php esc_html_e('Elegir', 'woocommerce'); ?></option>
                                             <?php foreach ($options as $option): ?>
                                                 <option value="<?php echo esc_attr($option); ?>" <?php selected($selected_val, $option); ?>>
@@ -305,8 +305,8 @@ class Luma_Quote_Cart_Frontend
                 $fields = array(
                     'name' => array('label' => get_option('lqc_label_name', 'Nombre'), 'required' => true, 'type' => 'text'),
                     'company' => array('label' => get_option('lqc_label_company', 'Empresa'), 'required' => false, 'type' => 'text'),
-                    'email' => array('label' => get_option('lqc_label_email', 'Email'), 'required' => false, 'type' => 'email'),
-                    'phone' => array('label' => get_option('lqc_label_phone', 'Teléfono / WhatsApp'), 'required' => true, 'type' => 'text'),
+                    'email' => array('label' => get_option('lqc_label_email', 'Correo electrónico'), 'required' => false, 'type' => 'email'),
+                    'phone' => array('label' => get_option('lqc_label_phone', 'Teléfono / WhatsApp'), 'required' => true, 'type' => 'tel'),
                     'message' => array('label' => get_option('lqc_label_message', 'Mensaje'), 'required' => false, 'type' => 'textarea'),
                 );
 

@@ -45,7 +45,7 @@ class Luma_Quote_Cart_Ajax
         }
 
         $effective_id = $variation_id ?: $product_id;
-        $step_pattern = get_post_meta($effective_id, '_lqc_unit', true) === 'm2'
+        $step_pattern = LQC_Tariff::unit(wc_get_product($effective_id)) === 'm2'
             ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/' : '/^[0-9]{1,7}$/';
         if (!preg_match($step_pattern, $quantity) || (float)$quantity <= 0) {
             wp_send_json_error(array('message' => 'Revisa la cantidad para esta unidad de venta.'));
@@ -91,7 +91,7 @@ class Luma_Quote_Cart_Ajax
         $lines = $cart->get_cart_items();
         $line = $lines[$cart_item_key] ?? null;
         $product = $line ? wc_get_product($line['variation_id'] ?: $line['product_id']) : false;
-        $is_area = $product && $product->get_meta('_lqc_unit') === 'm2';
+        $is_area = $product && LQC_Tariff::unit($product) === 'm2';
         $pattern = $is_area ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/' : '/^[0-9]{1,7}$/';
         if (!$product || !preg_match($pattern, $quantity) || (float)$quantity <= 0) {
             wp_send_json_error(array('message' => 'Revisa la cantidad y la unidad de esta referencia.'));
@@ -125,7 +125,7 @@ class Luma_Quote_Cart_Ajax
         wp_send_json_success(array(
             'message' => __('Item removed.', 'luma-quote-cart'),
             'count' => $cart->get_cart_count(),
-            'details' => $cart->get_cart_details(),
+            'html' => Luma_Quote_Cart::get_instance()->frontend->get_cart_html(),
         ));
     }
 

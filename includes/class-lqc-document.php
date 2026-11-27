@@ -14,7 +14,9 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
     {
         parent::__construct();
         $this->quote = $quote;
-        $this->AddFont('InstrumentSerif', '', 'InstrumentSerif.json', dirname(__DIR__).'/assets/fonts/');
+        $fonts = dirname(__DIR__).'/assets/fonts/';
+        $this->AddFont('Inter', '', 'InterRegular.json', $fonts);
+        $this->AddFont('Inter', 'B', 'InterSemiBold.json', $fonts);
         $this->SetMargins(16, 16, 16);
         $this->SetAutoPageBreak(false);
         $this->SetTitle('Cotización · Luma Arquitectura', true);
@@ -31,7 +33,7 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
 
     private function label($x, $y, $text, $size = 10, $style = '', $width = 0, $align = 'L')
     {
-        $this->SetFont('Helvetica', $style, $size);
+        $this->SetFont('Inter', $style, $size);
         $this->SetXY($x, $y);
         $this->Cell($width, 6, $this->letters($text), 0, 0, $align);
     }
@@ -99,13 +101,13 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
     private function display_text($x, $y, $text, $points, $width, $alignment = 'L')
     {
         $this->SetXY($x, $y);
-        $this->SetFont('InstrumentSerif', '', $points);
+        $this->SetFont('Inter', '', $points);
         $this->Cell($width, $points * 0.38, $this->letters($text), 0, 0, $alignment);
     }
 
     private function paragraph($x, $y, $width, $text, $size, $leading, $style = '')
     {
-        $this->SetFont('Helvetica', $style, $size);
+        $this->SetFont('Inter', $style, $size);
         $this->SetXY($x, $y);
         $this->MultiCell($width, $leading, $this->letters($text), 0, 'L');
         return $this->GetY();
@@ -132,7 +134,7 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
         $this->SetFillColor(255, 255, 255);
         $this->Rect(0, $title_y, 98, 25, 'F');
         $this->SetTextColor(38, 42, 37);
-        $this->display_text(14, $title_y+2, 'Cotización', 47, 82);
+        $this->display_text(14, $title_y+2, 'Cotización', 37, 82);
         $y = $title_y+12;
         $this->SetTextColor(103, 98, 85);
         $this->label(108, $y, 'PREPARADA PARA', 7.4, 'B');
@@ -140,7 +142,7 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
         $y = $this->paragraph(108, $y+6, 87, $q['client'], 11.2, 5, 'B');
         if ($q['project'] !== '') { $y = $this->paragraph(108, $y+1, 87, $q['project'], 9, 4.4); }
         $y = max($y+6, $title_y+29);
-        $this->display_text(15, $y, 'Selección de productos', 20, 100);
+        $this->display_text(15, $y, 'Selección de productos', 17, 100);
         $this->label(112, $y+1, 'Pesos colombianos  /  Valores antes de IVA', 8, '', 83, 'R');
         $y = $this->table_head($y+11);
         $net = 0; $tax = 0; $missing = 0;
@@ -192,7 +194,7 @@ final class LQC_Document extends \LumaQuotePdf\FPDF
             $this->Line(106, $y+21, 189, $y+21);
             $this->SetTextColor(38, 42, 37);
             $this->label(105, $y+23, $missing ? 'PARTIDAS VALORADAS CON IVA' : 'TOTAL DE PRODUCTOS CON IVA', 7.6, 'B');
-            $this->display_text(105,$y+29,$this->money($net+$tax),29,85,'R');
+            $this->display_text(105,$y+29,$this->money($net+$tax),24,85,'R');
         }
         return $this->Output('S');
     }

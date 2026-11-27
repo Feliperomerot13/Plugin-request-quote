@@ -23,7 +23,7 @@ final class LQC_Quote_PDF
         woocommerce_wp_select(array(
             'id' => '_lqc_unit_'.$product_id, 'name' => ($suffix ? '_lqc_unit_variation' : '_lqc_unit').$suffix,
             'label' => 'Unidad de cotización', 'value' => get_post_meta($product_id, '_lqc_unit', true),
-            'options' => array('piece' => 'Pieza', 'm2' => 'Metro cuadrado'),
+            'options' => array('' => 'Según tarifario', 'piece' => 'Pieza', 'm2' => 'Metro cuadrado'),
         ));
     }
 
@@ -34,6 +34,7 @@ final class LQC_Quote_PDF
             if (!is_string($value)) { continue; }
             $value = trim(wp_unslash($value));
             if ($field === '_lqc_unit') {
+                if ($value === '') { $product->delete_meta_data($field); continue; }
                 if (!in_array($value, array('piece','m2'), true)) { continue; }
             } elseif ($value === '') {
                 $product->delete_meta_data($field);
@@ -78,13 +79,12 @@ final class LQC_Quote_PDF
             foreach ($items as $item) {
                 $product = wc_get_product($item['variation_id'] ?: $item['product_id']);
                 if (!$product) { throw new RuntimeException('Una referencia dejó de estar disponible. Revisa tu selección.'); }
-                $net = $product->get_meta('_lqc_net');
-                $tax = $product->get_meta('_lqc_tax');
-                $priced = !$product->is_type('variable') && ctype_digit((string) $net) && (int) $net > 0 && ctype_digit((string) $tax);
+                list($net, $tax) = LQC_Tariff::price($product, $item);
+                $priced = !$product->is_type('variable') && $net !== null;
                 $lines[] = array(
                     'name' => $product->get_name(), 'detail' => implode(' · ', $item['variations']),
                     'image' => self::artwork($product->get_image_id()), 'qty' => $item['quantity'],
-                    'unit' => $product->get_meta('_lqc_unit') === 'm2' ? 'm²' : 'ud.',
+                    'unit' => LQC_Tariff::unit($product) === 'm2' ? 'm²' : 'ud.',
                     'net' => $priced ? (int)$net : null, 'tax' => $priced ? (int)$tax : null,
                 );
             }
