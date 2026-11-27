@@ -61,20 +61,25 @@
 }
 @keyframes lqc-turn { to { transform: rotate(360deg); } }
 
-/* Persistent access reads as a document tab, with a separate count. */
+/* Floating quote access on the catalogue and product pages. */
 #lqc-floating-basket {
     position: fixed; right: max(16px, env(safe-area-inset-right,0px)); bottom: calc(16px + env(safe-area-inset-bottom,0px));
-    z-index: 9999; display: inline-flex; align-items: center; gap: 11px;
-    min-height: 48px; width: auto; padding: 8px 16px; box-sizing: border-box; margin: 0;
-    border: 1px solid #b4afa1; border-radius: 5px; background: var(--lqc-paper); color: var(--lqc-ink);
-    font: 400 14px/1.35 var(--lqc-font); text-transform: none; cursor: pointer; letter-spacing: 0;
-    box-shadow: 0 3px 12px #22281e15; transition: border-color .16s ease;
+    z-index: 9999; display: inline-flex; align-items: center; gap: 10px;
+    box-sizing: border-box; min-height: 50px; width: auto; margin: 0; padding: 8px 11px 8px 16px;
+    border: 1px solid #c4bba7; border-radius: 6px; background: #30352f; color: #fff;
+    font: 600 14px/1.35 var(--lqc-font); text-transform: none; cursor: pointer; letter-spacing: 0;
+    box-shadow: 0 3px 12px #20251e33; transition: background-color .16s ease;
 }
-.lqc-document-mark { width: 12px; height: 16px; border: 1px solid var(--lqc-brass); box-sizing: border-box;
-    background: linear-gradient(var(--lqc-brass),var(--lqc-brass)) 2px 4px/6px 1px no-repeat,
-                linear-gradient(var(--lqc-brass),var(--lqc-brass)) 2px 7px/4px 1px no-repeat; }
+#lqc-floating-basket .lqc-document-mark {
+    width: 15px; height: 19px; flex: none; border: 1.5px solid currentColor; border-radius: 2px;
+    box-sizing: border-box; color: #e8dcc2;
+    background: linear-gradient(currentColor,currentColor) 3px 5px/7px 1px no-repeat,
+                linear-gradient(currentColor,currentColor) 3px 9px/5px 1px no-repeat;
+}
 #lqc-floating-basket .lqc-count {
-    padding-left: 12px; border-left: 1px solid #c9c5b9; font-variant-numeric: tabular-nums; font-weight: 600;
+    display: inline-grid; place-items: center; min-width: 25px; height: 25px; padding-inline: 5px;
+    box-sizing: border-box; border-radius: 20px; background: #ebe0c9; color: #30352f;
+    font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums;
 }
 body.lqc-modal-open { overflow: hidden; }
 #lqc-modal-overlay { display: none; position: fixed; inset: 0; background: #27282163; z-index: 10000; }
@@ -147,7 +152,7 @@ body.lqc-modal-open :is(#lqc-modal-overlay,#lqc-modal) { display: block; }
     outline: 2px solid #725a27 !important; outline-offset: 3px; }
 @media(hover:hover) {
     :is(.lqc-add-to-quote.button,.lqc-choose.button):hover::before { background-color: var(--lqc-sand); border-color: var(--lqc-brass); }
-    #lqc-floating-basket:hover { border-color: var(--lqc-brass); }
+    #lqc-floating-basket:hover { background: #424b3f; }
     :is(#lqc-modal,.lqc-cart-wrapper) :is(.lqc-continue,.lqc-form-actions .button,.lqc-download):hover { background: #e0cfab; }
     .lqc-close-modal:hover span { background: #eeece5; }
 }

@@ -3,7 +3,7 @@
  * Plugin Name: Luma Quote Cart
  * Plugin URI:  https://example.com
  * Description: A lightweight Request a Quote plugin for WooCommerce. Adds "add to quote", mini basket, and email inquiry features. MVP Phase 1.
- * Version:     1.2.6
+ * Version:     1.2.7
  * Author:      Luma Studio
  * Author URI:  https://example.com
  * Text Domain: luma-quote-cart
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define Constants.
-define('LUMA_QUOTE_VERSION', '1.2.6');
+define('LUMA_QUOTE_VERSION', '1.2.7');
 define('LUMA_QUOTE_PATH', plugin_dir_path(__FILE__));
 define('LUMA_QUOTE_URL', plugin_dir_url(__FILE__));
 define('LUMA_QUOTE_BASENAME', plugin_basename(__FILE__));
