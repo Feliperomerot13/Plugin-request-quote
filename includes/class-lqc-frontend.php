@@ -54,7 +54,7 @@ class Luma_Quote_Cart_Frontend
     {
         $label = get_option('lqc_button_text', '');
         return in_array($label, array('', 'Cotizar ahora', 'Agregar a Cotización'), true)
-            ? 'Agregar a mi cotización' : $label;
+            ? 'Añadir a cotización' : $label;
     }
 
     public function render_button($product_id = 0)
@@ -70,7 +70,7 @@ class Luma_Quote_Cart_Frontend
         $label = $this->button_text();
 
         echo '<button type="button" class="lqc-add-to-quote button alt" data-product_id="' . esc_attr($product_id) . '">';
-        echo esc_html($label);
+        echo '<span class="lqc-action-label">'.esc_html($label).'</span>';
         echo '</button>';
     }
 
@@ -120,9 +120,9 @@ class Luma_Quote_Cart_Frontend
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            <button class="button lqc-add-to-quote lqc-is-shortcode"
+            <button type="button" class="button lqc-add-to-quote lqc-is-shortcode"
                 data-product_id="<?php echo esc_attr($product_id); ?>">
-                <?php echo esc_html($button_text); ?>
+                <span class="lqc-action-label"><?php echo esc_html($button_text); ?></span>
             </button>
         </div>
         <?php
@@ -133,7 +133,7 @@ class Luma_Quote_Cart_Frontend
     {
         global $product;
         if ($product && $product->is_type('variable')) {
-            echo '<a class="button lqc-choose" href="'.esc_url($product->get_permalink()).'">Elegir opciones para cotizar</a>';
+            echo '<a class="button lqc-choose" href="'.esc_url($product->get_permalink()).'">Elegir opciones</a>';
             return;
         }
         $this->render_button();
@@ -192,10 +192,11 @@ class Luma_Quote_Cart_Frontend
         // However, we need the modal HTML if the popup is enabled, regardless of sticky button.
         $popup_enabled = get_option('lqc_enable_popup', 'yes') === 'yes';
 
+        echo '<span class="lqc-announcement" role="status" aria-live="polite" aria-atomic="true"></span>';
         if ($show_sticky) {
             ?>
             <button type="button" id="lqc-floating-basket" class="<?php echo $popup_enabled ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
-                <span>Mi cotización</span>
+                <span class="lqc-document-mark" aria-hidden="true"></span><span>Mi cotización</span>
                 <span class="lqc-count">
                     <?php echo esc_html($count); ?>
                 </span>
@@ -211,7 +212,7 @@ class Luma_Quote_Cart_Frontend
                     <h3 id="lqc-modal-heading">
                         <?php esc_html_e('Mi cotización', 'luma-quote-cart'); ?>
                     </h3>
-                    <button type="button" aria-label="Cerrar cotización" class="lqc-close-modal">&times;</button>
+                    <button type="button" aria-label="Cerrar cotización" class="lqc-close-modal"><span aria-hidden="true">×</span></button>
                 </div>
                 <div class="lqc-modal-body">
                     <?php echo $this->get_cart_html(); ?>
@@ -288,7 +289,7 @@ class Luma_Quote_Cart_Frontend
                         </div>
                         <div class="lqc-item-actions">
                             <label>Cantidad (<?php echo esc_html($item['unit']); ?>) <input type="number" min="<?php echo $item['unit'] === 'm²' ? '0.01' : '1'; ?>" step="<?php echo $item['unit'] === 'm²' ? '0.01' : '1'; ?>" class="lqc-qty" value="<?php echo esc_attr($item['quantity']); ?>"></label>
-                            <button type="button" class="lqc-remove">Quitar</button>
+                            <button type="button" class="lqc-remove" aria-label="Quitar <?php echo esc_attr($item['name']); ?>">Quitar</button>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -296,7 +297,7 @@ class Luma_Quote_Cart_Frontend
 
             <button type="button" class="button lqc-continue">Continuar con mis datos</button>
             <form class="lqc-contact-form" hidden>
-                <button type="button" class="lqc-back">← Volver a mis productos</button>
+                <button type="button" class="lqc-back">Volver a mis productos</button>
                 <?php if (LQC_Quote_PDF::enabled()): ?>
                     <p class="lqc-note">Usaremos tu correo para enviarte una copia de la cotización.</p>
                 <?php endif; ?>
@@ -339,7 +340,7 @@ class Luma_Quote_Cart_Frontend
 
                 <div class="lqc-form-actions">
                     <button type="submit"
-                        class="button primary"><?php echo LQC_Quote_PDF::enabled() ? 'Generar y enviarme la cotización' : 'Enviar solicitud'; ?></button>
+                        class="button primary"><?php echo LQC_Quote_PDF::enabled() ? 'Generar mi cotización' : 'Enviar solicitud'; ?></button>
                 </div>
                 <div class="lqc-response" role="status"></div>
             </form>

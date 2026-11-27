@@ -31,6 +31,18 @@ jQuery(document).ready(function ($) {
         });
     }
 
+    function resetActions(buttons) {
+        buttons.filter('.lqc-selected').each(function () {
+            var button = $(this);
+            button.find('.lqc-action-label').text(button.data('add-label'));
+            button.removeClass('lqc-selected');
+        });
+    }
+
+    $(document).on('change', '.lqc-shortcode-variation-select, form.cart [name^="attribute_"], form.cart [name="quantity"]', function () {
+        resetActions($(this).closest('.product, .lqc-shortcode-container, form.cart').find('.lqc-add-to-quote'));
+    });
+
     // AJAX Fragment Refresh for caching
     function refreshCartFragments() {
         $.post(lqc_vars.ajax_url, {
@@ -53,6 +65,11 @@ jQuery(document).ready(function ($) {
     $(document).on('click', '.lqc-add-to-quote', function (e) {
         e.preventDefault();
         var $btn = $(this);
+        if ($btn.hasClass('lqc-selected')) {
+            if ($('#lqc-modal').length) openModal(this);
+            else if (lqc_vars.quote_page_url) window.location.assign(lqc_vars.quote_page_url);
+            return;
+        }
         var product_id = $btn.data('product_id');
         var quantity = 1;
         var variation_id = 0;
@@ -110,7 +127,7 @@ jQuery(document).ready(function ($) {
             }
         }
 
-        $btn.addClass('loading').prop('disabled', true);
+        $btn.addClass('loading').attr('aria-busy', 'true').prop('disabled', true);
 
         $.post(lqc_vars.ajax_url, {
             action: 'lqc_add_to_quote',
@@ -122,12 +139,15 @@ jQuery(document).ready(function ($) {
         }, function (response) {
             $btn.removeClass('loading');
             if (response.success) {
-                var status = $btn.next('.lqc-status');
-                if (!status.length) status = $('<span>', {class:'lqc-status',role:'status'}).insertAfter($btn);
-                status.empty().append(document.createTextNode('Agregado. '));
+                $('.lqc-announcement').text('Producto añadido a tu cotización.');
                 if ($('#lqc-modal').length || lqc_vars.quote_page_url) {
-                    $('<button>', {type:'button', class:'lqc-view-selection ' + ($('#lqc-modal').length ? 'lqc-toggle-modal' : 'lqc-go-to-page')})
-                        .text('Ver mi cotización').appendTo(status);
+                    var label = $btn.find('.lqc-action-label');
+                    if (!label.length) {
+                        label = $('<span>', {class:'lqc-action-label'}).text($btn.text().trim());
+                        $btn.empty().append(label);
+                    }
+                    $btn.data('add-label', label.text()).addClass('lqc-selected');
+                    label.text('Ver mi cotización');
                 }
                 updateCounter(response.data.count);
 
@@ -136,21 +156,20 @@ jQuery(document).ready(function ($) {
                     refreshView(response.data.html);
                 }
 
-                // Optional: Open modal immediately?
-                // $('body').addClass('lqc-modal-open');
             } else {
                 alert(response.data.message);
             }
         }).fail(function () {
             alert('No se pudo confirmar la selección. Revisa tu lista antes de intentarlo otra vez.');
         }).always(function () {
-            $btn.removeClass('loading').prop('disabled', false);
+            $btn.removeClass('loading').removeAttr('aria-busy').prop('disabled', false);
         });
     });
 
     // Update Counter
     function updateCounter(count) {
         $('.lqc-count').text(count);
+        if (Number(count) === 0) resetActions($('.lqc-selected'));
     }
 
     var opener;
@@ -159,12 +178,15 @@ jQuery(document).ready(function ($) {
         if (opener && opener.isConnected) opener.focus();
     }
 
-    // Toggle Modal
-    $(document).on('click', '.lqc-toggle-modal', function (e) {
-        e.preventDefault();
-        opener = this;
+    function openModal(trigger) {
+        opener = trigger;
         $('body').addClass('lqc-modal-open');
         $('#lqc-modal .lqc-close-modal').trigger('focus');
+    }
+
+    $(document).on('click', '.lqc-toggle-modal', function (e) {
+        e.preventDefault();
+        openModal(this);
     });
 
     $(document).on('click', '.lqc-close-modal, #lqc-modal-overlay', function (e) {
@@ -201,6 +223,10 @@ jQuery(document).ready(function ($) {
             product_id: product_id
         }, function (response) {
             if (response.success) {
+                var parentId = String(product_id).split('_')[0];
+                resetActions($('.lqc-selected').filter(function () {
+                    return String($(this).data('product_id')) === parentId;
+                }));
                 if (response.data.html) refreshView(response.data.html);
                 updateCounter(response.data.count);
 
@@ -267,7 +293,8 @@ jQuery(document).ready(function ($) {
         var $btn = $form.find('button[type="submit"]');
         var $response = $form.find('.lqc-response');
 
-        $btn.prop('disabled', true);
+        var submitLabel = $btn.text();
+        $btn.attr('aria-busy', 'true').prop('disabled', true).text(lqc_vars.pdf_enabled ? 'Generando cotización…' : 'Enviando solicitud…');
         $response.text('').removeClass('success error');
 
         $form.data('submitting', true);
@@ -304,7 +331,7 @@ jQuery(document).ready(function ($) {
             $response.addClass('error').text('Se interrumpió la conexión. Tus datos siguen aquí. Vuelve a intentarlo.');
         }).always(function () {
             $form.removeData('submitting');
-            $btn.prop('disabled', false);
+            $btn.removeAttr('aria-busy').prop('disabled', false).text(submitLabel);
         });
     });
 });
