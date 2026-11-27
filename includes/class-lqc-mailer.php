@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 class Luma_Quote_Cart_Mailer
 {
 
-    public function send_quote($data)
+    public function send_quote($data, $attachments = array(), $items = null)
     {
         $admin_emails = get_option('lqc_recipient_emails');
         if (empty($admin_emails)) {
@@ -18,7 +18,7 @@ class Luma_Quote_Cart_Mailer
         $customer_phone = $data['lqc_phone'];
         $message_note = $data['lqc_message'];
 
-        $cart_details = Luma_Quote_Cart::get_instance()->cart->get_cart_details();
+        $cart_details = $items ?? Luma_Quote_Cart::get_instance()->cart->get_cart_details();
 
         // 1. Send to Admin
         $admin_subject = sprintf(__('Nueva Solicitud de Cotización de %s', 'luma-quote-cart'), $customer_name);
@@ -28,7 +28,7 @@ class Luma_Quote_Cart_Mailer
         }
 
         $admin_content = $this->get_email_content($data, $cart_details, 'admin');
-        $admin_sent = wp_mail($admin_emails, $admin_subject, $admin_content, $admin_headers);
+        $admin_sent = wp_mail($admin_emails, $admin_subject, $admin_content, $admin_headers, $attachments);
 
         // 2. Send to Customer (if email provided)
         $customer_sent = true;
@@ -37,7 +37,7 @@ class Luma_Quote_Cart_Mailer
             $customer_headers = array('Content-Type: text/html; charset=UTF-8');
 
             $customer_content = $this->get_email_content($data, $cart_details, 'customer');
-            $customer_sent = wp_mail($customer_email, $customer_subject, $customer_content, $customer_headers);
+            $customer_sent = wp_mail($customer_email, $customer_subject, $customer_content, $customer_headers, $attachments);
         }
 
         return $admin_sent && $customer_sent;

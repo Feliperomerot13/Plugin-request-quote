@@ -10,6 +10,15 @@ class Luma_Quote_Cart_Settings
 
     public function __construct()
     {
+        add_action('woocommerce_product_options_general_product_data', function () {
+            global $post;
+            LQC_Quote_PDF::fields($post->ID);
+        });
+        add_action('woocommerce_variation_options_pricing', function ($index, $data, $variation) {
+            LQC_Quote_PDF::fields($variation->ID, '['.$index.']');
+        }, 10, 3);
+        add_action('woocommerce_admin_process_product_object', array('LQC_Quote_PDF', 'save_fields'));
+        add_action('woocommerce_admin_process_variation_object', array('LQC_Quote_PDF', 'save_fields'), 10, 2);
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'register_settings'));
     }
@@ -43,6 +52,10 @@ class Luma_Quote_Cart_Settings
             'luma-quote-settings'
         );
 
+        register_setting($this->option_group, 'lqc_enable_pdf', array('default' => 'no'));
+        add_settings_field('lqc_enable_pdf', 'Emitir cotización PDF', array($this, 'render_checkbox_field'),
+            'luma-quote-settings', 'lqc_general_section', array('id' => 'lqc_enable_pdf',
+            'desc' => 'Usa las tarifas privadas de cada producto o variación. Los productos sin tarifa quedan en revisión.'));
         add_settings_field(
             'lqc_recipient_emails',
             esc_html__('Email(s) Destinatario', 'luma-quote-cart'),

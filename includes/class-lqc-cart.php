@@ -41,12 +41,25 @@ class Luma_Quote_Cart_Cart
             return new WP_Error('no_session', __('WooCommerce session not available.', 'luma-quote-cart'));
         }
 
+        $parent = wc_get_product($product_id);
+        if (!$parent || $parent->get_status() !== 'publish') {
+            return new WP_Error('invalid_product', 'Esta referencia ya no está disponible.');
+        }
         if (!$variation_id && !empty($variations)) {
             $data_store = WC_Data_Store::load('product');
             $match = $data_store->find_matching_product_variation(wc_get_product($product_id), $variations);
             if ($match) $variation_id = $match;
         }
 
+        if ($parent->is_type('variable') && !$variation_id) {
+            return new WP_Error('variation_missing', 'Elige las opciones de la referencia.');
+        }
+        if ($variation_id) {
+            $variant = wc_get_product($variation_id);
+            if (!$variant || !$variant->is_type('variation') || $variant->get_parent_id() !== $parent->get_id() || !$variant->variation_is_active()) {
+                return new WP_Error('invalid_variation', 'Elige una combinación disponible.');
+            }
+        }
         $cart = $this->get_cart_items();
         $cart_item_key = $variation_id ? $product_id . '_' . $variation_id : $product_id;
 
@@ -106,7 +119,14 @@ class Luma_Quote_Cart_Cart
             if (!$variation_id) {
                 $data_store = WC_Data_Store::load('product');
                 $match = $data_store->find_matching_product_variation(wc_get_product($product_id), $variations);
-                if ($match) $variation_id = $match;
+                if (!$match) {
+                    return new WP_Error('invalid_variation', 'Esta combinación no está disponible.');
+                }
+                $variation_id = $match;
+            }
+            $variant = wc_get_product($variation_id);
+            if (!$variant || !$variant->is_type('variation') || (int)$variant->get_parent_id() !== (int)$product_id || !$variant->variation_is_active()) {
+                return new WP_Error('invalid_variation', 'Esta combinación no está disponible.');
             }
 
             $new_cart_item_key = $variation_id ? $product_id . '_' . $variation_id : $product_id;
@@ -161,11 +181,7 @@ class Luma_Quote_Cart_Cart
     public function get_cart_count()
     {
         $cart = $this->get_cart_items();
-        $count = 0;
-        foreach ($cart as $item) {
-            $count += $item['quantity'];
-        }
-        return $count;
+        return count($cart);
     }
 
     /**
@@ -203,7 +219,7 @@ class Luma_Quote_Cart_Cart
                     'image' => $product->get_image(),
                     'image_url' => $image_url,
                     'quantity' => $item['quantity'],
-                    'price' => $product->get_price_html(),
+                    'unit' => $product->get_meta('_lqc_unit') === 'm2' ? 'm²' : 'ud.',
                     'variations' => $variations_formatted,
                     'raw_variations' => isset($item['variations']) ? $item['variations'] : array()
                 );

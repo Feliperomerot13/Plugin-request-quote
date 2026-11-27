@@ -1,5 +1,35 @@
 jQuery(document).ready(function ($) {
 
+    function showStep(container, contact) {
+        container.find('.lqc-items-list, .lqc-continue').prop('hidden', contact);
+        container.find('.lqc-contact-form').prop('hidden', !contact);
+    }
+
+    $(document).on('click', '.lqc-continue, .lqc-back', function () {
+        var container = $(this).closest('.lqc-modal-body, .lqc-cart-wrapper');
+        var contact = $(this).hasClass('lqc-continue');
+        showStep(container, contact);
+        container.find(contact ? '.lqc-contact-form input' : '.lqc-continue').first().trigger('focus');
+    });
+
+    function refreshView(html) {
+        $('.lqc-modal-body, .lqc-cart-wrapper').each(function () {
+            var container = $(this);
+            var form = container.find('.lqc-contact-form');
+            if (form.data('submitting')) return;
+            var values = form.serializeArray();
+            var inContact = form.length && !form.prop('hidden');
+            var requestId = form.data('request-id');
+            container.html(html);
+            var next = container.find('.lqc-contact-form');
+            if (requestId) next.data('request-id', requestId);
+            values.forEach(function (field) {
+                next.find('[name]').filter(function () { return this.name === field.name; }).val(field.value);
+            });
+            showStep(container, inContact);
+        });
+    }
+
     // AJAX Fragment Refresh for caching
     function refreshCartFragments() {
         $.post(lqc_vars.ajax_url, {
@@ -8,8 +38,7 @@ jQuery(document).ready(function ($) {
             if (response.success && response.data) {
                 updateCounter(response.data.count);
                 if (response.data.html) {
-                    $('.lqc-modal-body').html(response.data.html);
-                    $('.lqc-cart-wrapper').html(response.data.html);
+                    refreshView(response.data.html);
                 }
                 if (response.data.nonce) {
                     lqc_vars.nonce = response.data.nonce;
@@ -80,7 +109,7 @@ jQuery(document).ready(function ($) {
             }
         }
 
-        $btn.addClass('loading');
+        $btn.addClass('loading').prop('disabled', true);
 
         $.post(lqc_vars.ajax_url, {
             action: 'lqc_add_to_quote',
@@ -97,23 +126,7 @@ jQuery(document).ready(function ($) {
 
                 // Update Modal Content with fresh HTML
                 if (response.data.html) {
-                    var $modalBody = $('.lqc-modal-body');
-                    var $shortcodeWrapper = $('.lqc-cart-wrapper');
-                    var updated = false;
-
-                    if ($modalBody.length) {
-                        $modalBody.html(response.data.html);
-                        updated = true;
-                    }
-
-                    if ($shortcodeWrapper.length) {
-                        $shortcodeWrapper.html(response.data.html);
-                        updated = true;
-                    }
-
-                    if (!updated) {
-                        console.warn('LQC: No cart container found (.lqc-modal-body or .lqc-cart-wrapper). Cart updated in background.');
-                    }
+                    refreshView(response.data.html);
                 }
 
                 // Optional: Open modal immediately?
@@ -121,6 +134,10 @@ jQuery(document).ready(function ($) {
             } else {
                 alert(response.data.message);
             }
+        }).fail(function () {
+            alert('No se pudo confirmar la selección. Revisa tu lista antes de intentarlo otra vez.');
+        }).always(function () {
+            $btn.removeClass('loading').prop('disabled', false);
         });
     });
 
@@ -138,6 +155,13 @@ jQuery(document).ready(function ($) {
     $(document).on('click', '.lqc-close-modal, #lqc-modal-overlay', function (e) {
         e.preventDefault();
         $('body').removeClass('lqc-modal-open');
+    });
+
+    $(document).on('keydown', function (event) {
+        if (event.key === 'Escape' && $('body').hasClass('lqc-modal-open')) {
+            $('body').removeClass('lqc-modal-open');
+            $('#lqc-floating-basket').trigger('focus');
+        }
     });
 
     // Go to Page (if popup disabled)
@@ -192,6 +216,7 @@ jQuery(document).ready(function ($) {
                 }
             });
 
+            if (!allSelected) return;
             // We need to resolve the new variation_id based on selected attributes. 
             // In a full implementation, WordPress does this via data attributes.
             // For LQC MVP, we will send the attributes back to the server and let WC figure it out
@@ -211,15 +236,17 @@ jQuery(document).ready(function ($) {
                 updateCounter(response.data.count);
                 if (response.data.html) {
                     // Refresh the modal HTML so the new key and image are updated
-                    $('.lqc-modal-body').html(response.data.html);
-                    $('.lqc-cart-wrapper').html(response.data.html);
+                    refreshView(response.data.html);
                 }
+            } else {
+                alert(response.data.message);
+                refreshCartFragments();
             }
-        });
+        }).fail(function () { alert('No se pudo confirmar la cantidad. Revisa tu lista.'); });
     });
 
     // Submit Form
-    $(document).on('submit', '#lqc-quote-form', function (e) {
+    $(document).on('submit', '.lqc-contact-form', function (e) {
         e.preventDefault();
         var $form = $(this);
         var $btn = $form.find('button[type="submit"]');
@@ -228,24 +255,40 @@ jQuery(document).ready(function ($) {
         $btn.prop('disabled', true);
         $response.text('').removeClass('success error');
 
+        $form.data('submitting', true);
         var data = $form.serialize();
-        data += '&action=lqc_submit_quote&nonce=' + lqc_vars.nonce;
-
-        $.post(lqc_vars.ajax_url, data, function (response) {
-            $btn.prop('disabled', false);
-            if (response.success) {
-                $response.addClass('success').text(response.data.message);
-                $form.find('input, textarea').val('');
-                $('.lqc-items-list').html('<p>' + response.data.message + '</p>');
-                updateCounter(0);
-                setTimeout(function () {
-                    $('body').removeClass('lqc-modal-open');
-                    // location.reload(); // Optional
-                }, 3000);
-            } else {
-                $response.addClass('error').text(response.data.message);
+        if (lqc_vars.pdf_enabled) {
+            if (!$form.data('request-id')) {
+                var bytes = crypto.getRandomValues(new Uint8Array(16));
+                bytes[6] = (bytes[6] & 15) | 64;
+                bytes[8] = (bytes[8] & 63) | 128;
+                var hex = Array.from(bytes, function (n) { return n.toString(16).padStart(2, '0'); }).join('');
+                $form.data('request-id', hex.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5'));
             }
+            data += '&request_id=' + encodeURIComponent($form.data('request-id'));
+        }
+        data += '&action=lqc_submit_quote&nonce=' + encodeURIComponent(lqc_vars.nonce);
+        $.post(lqc_vars.ajax_url, data).done(function (response) {
+            if (!response.success) {
+                $response.addClass('error').text(response.data.message);
+                return;
+            }
+            var box = $('<div>', {class: 'lqc-result', role: 'status'});
+            $('<p>').text(response.data.message).appendTo(box);
+            if (response.data.pdf) {
+                var binary = atob(response.data.pdf);
+                var bytes = Uint8Array.from(binary, function (c) { return c.charCodeAt(0); });
+                var url = URL.createObjectURL(new Blob([bytes], {type: 'application/pdf'}));
+                $('<a>', {class: 'button lqc-download', href: url, download: response.data.folio + '.pdf'})
+                    .text('Descargar cotización PDF').appendTo(box);
+            }
+            $('.lqc-modal-body, .lqc-cart-wrapper').empty().append(box);
+            updateCounter(0);
+        }).fail(function () {
+            $response.addClass('error').text('Se interrumpió la conexión. Tus datos siguen aquí. Vuelve a intentarlo.');
+        }).always(function () {
+            $form.removeData('submitting');
+            $btn.prop('disabled', false);
         });
     });
-
 });

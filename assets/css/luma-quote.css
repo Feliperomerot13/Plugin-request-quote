@@ -187,3 +187,36 @@ button.loading {
 .lqc-response.error {
 	color: red;
 }
+/* Keep the catalogue action visible inside the theme's product cards. */
+ul.products li.product .mfn-after-shop-loop-item .lqc-add-to-quote,
+ul.products li.product .mfn-after-shop-loop-item .lqc-choose {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    margin: 8px 0;
+}
+#lqc-floating-basket {
+    width: auto;
+    height: auto;
+    padding: 12px 16px;
+    border-radius: 24px;
+    flex-direction: row;
+    gap: 9px;
+    background: #262a28;
+    font-size: 14px;
+}
+#lqc-floating-basket .lqc-count { margin: 0; color: #f2c75a; }
+.lqc-contact-form[hidden], .lqc-items-list[hidden], .lqc-continue[hidden] { display: none !important; }
+.lqc-back { margin-bottom: 18px; }
+.lqc-item-actions label { font-size: 12px; }
+.lqc-modal-body .lqc-qty { width: 5em; }
+.lqc-item-actions .lqc-remove { font-size: 13px; color: #59432b; text-decoration: underline; }
+.lqc-continue { margin-top: 18px; }
+.lqc-contact-form .lqc-form-group input, .lqc-contact-form textarea { width: 100%; box-sizing: border-box; }
+.lqc-download { display: inline-block; margin-top: 12px; }
+@media (max-width: 560px) {
+    #lqc-modal { box-sizing: border-box; max-height: 85vh; }
+    .lqc-item { flex-wrap: wrap; gap: 6px; }
+    .lqc-item-actions { width: 100%; justify-content: space-between; }
+}

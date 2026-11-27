@@ -30,7 +30,7 @@ class Luma_Quote_Cart_Ajax
         check_ajax_referer('lqc-nonce', 'nonce');
 
         $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
-        $quantity = isset($_POST['quantity']) ? absint($_POST['quantity']) : 1;
+        $quantity = isset($_POST['quantity']) ? wc_format_decimal(wp_unslash($_POST['quantity'])) : '1';
         $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
         
         $variations = array();
@@ -44,6 +44,13 @@ class Luma_Quote_Cart_Ajax
             wp_send_json_error(array('message' => __('Invalid product.', 'luma-quote-cart')));
         }
 
+        $effective_id = $variation_id ?: $product_id;
+        $step_pattern = get_post_meta($effective_id, '_lqc_unit', true) === 'm2'
+            ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/' : '/^[0-9]{1,7}$/';
+        if (!preg_match($step_pattern, $quantity) || (float)$quantity <= 0) {
+            wp_send_json_error(array('message' => 'Revisa la cantidad para esta unidad de venta.'));
+        }
+        $quantity = (float)$quantity;
         $cart = Luma_Quote_Cart::get_instance()->cart;
         $added = $cart->add_to_cart($product_id, $quantity, $variation_id, $variations);
 
@@ -70,7 +77,7 @@ class Luma_Quote_Cart_Ajax
             $cart_item_key = sanitize_text_field($_POST['product_id']);
         }
         
-        $quantity = isset($_POST['quantity']) ? absint($_POST['quantity']) : 0;
+        $quantity = isset($_POST['quantity']) ? wc_format_decimal(wp_unslash($_POST['quantity'])) : '';
         $variation_id = isset($_POST['variation_id']) ? absint($_POST['variation_id']) : 0;
         $variations = array();
         if (isset($_POST['variations']) && is_array($_POST['variations'])) {
@@ -81,8 +88,18 @@ class Luma_Quote_Cart_Ajax
 
         $cart = Luma_Quote_Cart::get_instance()->cart;
         
+        $lines = $cart->get_cart_items();
+        $line = $lines[$cart_item_key] ?? null;
+        $product = $line ? wc_get_product($line['variation_id'] ?: $line['product_id']) : false;
+        $is_area = $product && $product->get_meta('_lqc_unit') === 'm2';
+        $pattern = $is_area ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/' : '/^[0-9]{1,7}$/';
+        if (!$product || !preg_match($pattern, $quantity) || (float)$quantity <= 0) {
+            wp_send_json_error(array('message' => 'Revisa la cantidad y la unidad de esta referencia.'));
+        }
+        $quantity = (float)$quantity;
         if (!empty($variations) || $variation_id) {
-            $cart->update_item_variations($cart_item_key, $variation_id, $variations, $quantity);
+            $updated = $cart->update_item_variations($cart_item_key, $variation_id, $variations, $quantity);
+            if (is_wp_error($updated)) { wp_send_json_error(array('message' => $updated->get_error_message())); }
         } else {
             $cart->update_quantity($cart_item_key, $quantity);
         }
@@ -101,10 +118,9 @@ class Luma_Quote_Cart_Ajax
     {
         check_ajax_referer('lqc-nonce', 'nonce');
 
-        $product_id = isset($_POST['product_id']) ? absint($_POST['product_id']) : 0;
-
         $cart = Luma_Quote_Cart::get_instance()->cart;
-        $cart->remove_item($product_id);
+        $key = isset($_POST['product_id']) ? sanitize_text_field(wp_unslash($_POST['product_id'])) : '';
+        $cart->remove_item($key);
 
         wp_send_json_success(array(
             'message' => __('Item removed.', 'luma-quote-cart'),
@@ -127,6 +143,19 @@ class Luma_Quote_Cart_Ajax
             $data[$field] = isset($_POST[$field]) ? sanitize_text_field($_POST[$field]) : '';
         }
 
+        if (LQC_Quote_PDF::enabled()) {
+            if (!$data['lqc_name'] || !is_email($data['lqc_email'])) {
+                wp_send_json_error(array('message' => 'Ingresa tu nombre y un correo válido.'));
+            }
+            $plugin = Luma_Quote_Cart::get_instance();
+            try {
+                $document = LQC_Quote_PDF::issue($data, $plugin->cart->get_cart_details(),
+                    sanitize_text_field(wp_unslash($_POST['request_id'] ?? '')), $plugin->mailer);
+            } catch (Throwable $e) {
+                wp_send_json_error(array('message' => 'No pudimos generar el documento. Revisa tu selección y vuelve a intentarlo.'));
+            }
+            wp_send_json_success($document);
+        }
         if (empty($data['lqc_name']) || empty($data['lqc_phone'])) {
             wp_send_json_error(array('message' => __('Name and Phone/WhatsApp are required.', 'luma-quote-cart')));
         }

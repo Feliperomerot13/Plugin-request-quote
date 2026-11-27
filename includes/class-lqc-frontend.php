@@ -37,6 +37,8 @@ class Luma_Quote_Cart_Frontend
 
         wp_localize_script('luma-quote-cart', 'lqc_vars', array(
             'ajax_url' => admin_url('admin-ajax.php'),
+            'quote_page_url' => get_option('lqc_quote_page_id') ? get_permalink(get_option('lqc_quote_page_id')) : '',
+            'pdf_enabled' => LQC_Quote_PDF::enabled(),
             'nonce' => wp_create_nonce('lqc-nonce'),
             'strings' => array(
                 'added' => __('¡Agregado!', 'luma-quote-cart'),
@@ -48,6 +50,13 @@ class Luma_Quote_Cart_Frontend
     /**
      * Render Add to Quote Button.
      */
+    private function button_text()
+    {
+        $label = get_option('lqc_button_text', '');
+        return in_array($label, array('', 'Cotizar ahora', 'Agregar a Cotización'), true)
+            ? 'Agregar a mi cotización' : $label;
+    }
+
     public function render_button($product_id = 0)
     {
         global $product;
@@ -58,7 +67,7 @@ class Luma_Quote_Cart_Frontend
         if (!$product_id)
             return;
 
-        $label = get_option('lqc_button_text', 'Agregar a Cotización');
+        $label = $this->button_text();
 
         echo '<button type="button" class="lqc-add-to-quote button alt" data-product_id="' . esc_attr($product_id) . '">';
         echo esc_html($label);
@@ -84,7 +93,7 @@ class Luma_Quote_Cart_Frontend
             return '';
         }
 
-        $button_text = get_option('lqc_button_text', 'Agregar a Cotización');
+        $button_text = $this->button_text();
 
         ob_start();
         ?>
@@ -122,19 +131,29 @@ class Luma_Quote_Cart_Frontend
 
     public function add_button_loop()
     {
+        global $product;
+        if ($product && $product->is_type('variable')) {
+            echo '<a class="button lqc-choose" href="'.esc_url($product->get_permalink()).'">Elegir opciones</a>';
+            return;
+        }
         $this->render_button();
     }
 
     public function add_button_single()
     {
+        global $product;
+        if ($product && $product->is_type('variable')) {
+            echo $this->render_button_shortcode(array('id' => $product->get_id()));
+            return;
+        }
         $this->render_button();
     }
 
     public function shortcode_button($atts)
     {
-        ob_start();
-        $this->render_button();
-        return ob_get_clean();
+        global $product;
+        $id = !empty($atts['id']) ? absint($atts['id']) : ($product ? $product->get_id() : get_the_ID());
+        return $this->render_button_shortcode(array('id' => $id));
     }
 
     /**
@@ -175,24 +194,24 @@ class Luma_Quote_Cart_Frontend
 
         if ($show_sticky) {
             ?>
-            <div id="lqc-floating-basket" class="<?php echo $popup_enabled ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
-                <span class="dashicons dashicons-format-aside"></span>
+            <button type="button" id="lqc-floating-basket" class="<?php echo $popup_enabled ? 'lqc-toggle-modal' : 'lqc-go-to-page'; ?>">
+                <span>Mi cotización</span>
                 <span class="lqc-count">
                     <?php echo esc_html($count); ?>
                 </span>
-            </div>
+            </button>
             <?php
         }
 
         if ($popup_enabled) {
             ?>
             <div id="lqc-modal-overlay"></div>
-            <div id="lqc-modal">
+            <div id="lqc-modal" role="dialog" aria-modal="true" aria-labelledby="lqc-modal-heading">
                 <div class="lqc-modal-header">
-                    <h3>
+                    <h3 id="lqc-modal-heading">
                         <?php esc_html_e('Solicitar Cotización', 'luma-quote-cart'); ?>
                     </h3>
-                    <button class="lqc-close-modal">&times;</button>
+                    <button type="button" aria-label="Cerrar cotización" class="lqc-close-modal">&times;</button>
                 </div>
                 <div class="lqc-modal-body">
                     <?php echo $this->get_cart_html(); ?>
@@ -261,14 +280,16 @@ class Luma_Quote_Cart_Frontend
                             <?php endif; ?>
                         </div>
                         <div class="lqc-item-actions">
-                            <input type="number" min="1" class="lqc-qty" value="<?php echo esc_attr($item['quantity']); ?>">
-                            <button type="button" class="lqc-remove">&times;</button>
+                            <label>Cantidad (<?php echo esc_html($item['unit']); ?>) <input type="number" min="<?php echo $item['unit'] === 'm²' ? '0.01' : '1'; ?>" step="<?php echo $item['unit'] === 'm²' ? '0.01' : '1'; ?>" class="lqc-qty" value="<?php echo esc_attr($item['quantity']); ?>"></label>
+                            <button type="button" class="lqc-remove">Quitar</button>
                         </div>
                     </div>
                 <?php endforeach; ?>
             </div>
 
-            <form id="lqc-quote-form">
+            <button type="button" class="button lqc-continue">Continuar con mis datos</button>
+            <form class="lqc-contact-form" hidden>
+                <button type="button" class="lqc-back">Volver a mis productos</button>
                 <!-- Configurable Fields -->
                 <?php
                 $fields = array(
@@ -279,11 +300,15 @@ class Luma_Quote_Cart_Frontend
                     'message' => array('label' => get_option('lqc_label_message', 'Mensaje'), 'required' => false, 'type' => 'textarea'),
                 );
 
+                if (LQC_Quote_PDF::enabled()) {
+                    $fields['email']['required'] = true;
+                    $fields['phone']['required'] = false;
+                }
                 foreach ($fields as $key => $field) {
                     $field_id = 'lqc_' . $key;
                     $is_enabled = get_option('lqc_field_enable_' . $key, 'yes') === 'yes';
 
-                    if (!$is_enabled)
+                    if (!$is_enabled && !$field['required'])
                         continue;
 
                     $label = get_option('lqc_label_' . $key, $field['label']);
@@ -291,22 +316,22 @@ class Luma_Quote_Cart_Frontend
                     $star = $field['required'] ? ' *' : '';
 
                     echo '<div class="lqc-form-group">';
-                    echo '<label>' . esc_html($label . $star) . '</label>';
+                    echo '<label>' . esc_html($label . $star);
 
                     if ($field['type'] === 'textarea') {
                         echo '<textarea name="' . esc_attr($field_id) . '" ' . $req . '></textarea>';
                     } else {
                         echo '<input type="' . esc_attr($field['type']) . '" name="' . esc_attr($field_id) . '" ' . $req . '>';
                     }
-                    echo '</div>';
+                    echo '</label></div>';
                 }
                 ?>
 
                 <div class="lqc-form-actions">
                     <button type="submit"
-                        class="button primary"><?php esc_html_e('Enviar Solicitud', 'luma-quote-cart'); ?></button>
+                        class="button primary"><?php echo LQC_Quote_PDF::enabled() ? 'Generar y enviarme la cotización' : 'Enviar solicitud'; ?></button>
                 </div>
-                <div class="lqc-response"></div>
+                <div class="lqc-response" role="status"></div>
             </form>
             <?php
         }
