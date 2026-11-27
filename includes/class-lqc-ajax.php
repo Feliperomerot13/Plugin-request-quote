@@ -155,11 +155,14 @@ class Luma_Quote_Cart_Ajax
         if (strlen($digits) < 7 || strlen($digits) > 15 || !preg_match('/^[+0-9() .-]+$/', $data['lqc_phone'])) {
             wp_send_json_error(array('message'=>'Revisa el teléfono de contacto e incluye el indicativo si corresponde.'));
         }
+        $data['lqc_test_copy'] = isset($_POST['lqc_test_copy']) && $_POST['lqc_test_copy'] === '1'
+            && current_user_can('manage_options');
         if (LQC_Quote_PDF::enabled()) {
             $plugin = Luma_Quote_Cart::get_instance();
             try {
                 $document = LQC_Quote_PDF::issue($data, $plugin->cart->get_cart_details(),
-                    sanitize_text_field(wp_unslash($_POST['request_id'] ?? '')), $plugin->mailer);
+                    sanitize_text_field(wp_unslash($_POST['request_id'] ?? '')), $plugin->mailer,
+                    isset($_POST['lqc_quantities']) ? wp_unslash($_POST['lqc_quantities']) : null);
             } catch (Throwable $e) {
                 wp_send_json_error(array('message' => 'No pudimos generar el documento. Revisa tu selección y vuelve a intentarlo.'));
             }

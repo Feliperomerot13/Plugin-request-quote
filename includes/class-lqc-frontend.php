@@ -297,6 +297,7 @@ class Luma_Quote_Cart_Frontend
 
             <button type="button" class="button lqc-continue">Continuar con mis datos</button>
             <form class="lqc-contact-form" hidden>
+                <input type="hidden" name="lqc_quantities" value="">
                 <button type="button" class="lqc-back">Volver a mis productos</button>
                 <?php if (LQC_Quote_PDF::enabled()): ?>
                     <p class="lqc-note">Usaremos tu correo para enviarte una copia de la cotización.</p>
@@ -332,6 +333,12 @@ class Luma_Quote_Cart_Frontend
                         <textarea name="lqc_message" maxlength="800" rows="2"></textarea>
                     </label>
                 </div>
+                <?php if (current_user_can('manage_options')): ?>
+                    <label class="lqc-shipping-choice">
+                        <input type="checkbox" name="lqc_test_copy" value="1">
+                        Prueba de administrador · Enviar ambas copias al correo de contacto
+                    </label>
+                <?php endif; ?>
                 <div class="lqc-form-actions">
                     <button type="submit"
                         class="button primary"><?php echo LQC_Quote_PDF::enabled() ? 'Generar mi cotización' : 'Enviar solicitud'; ?></button>

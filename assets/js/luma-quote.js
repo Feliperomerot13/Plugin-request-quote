@@ -9,8 +9,20 @@ jQuery(document).ready(function ($) {
     $(document).on('click', '.lqc-continue, .lqc-back', function () {
         var container = $(this).closest('.lqc-modal-body, .lqc-cart-wrapper');
         var contact = $(this).hasClass('lqc-continue');
+        if (contact) {
+            var quantities = {};
+            var inputs = container.find('.lqc-qty');
+            for (var input of inputs.get()) {
+                if (!input.value || !input.reportValidity()) {
+                    input.focus();
+                    return;
+                }
+                quantities[$(input).closest('.lqc-item').attr('data-id')] = input.value;
+            }
+            container.find('[name="lqc_quantities"]').val(JSON.stringify(quantities));
+        }
         showStep(container, contact);
-        container.find(contact ? '.lqc-contact-form input' : '.lqc-continue').first().trigger('focus');
+        container.find(contact ? '.lqc-contact-form input:visible' : '.lqc-continue').first().trigger('focus');
     });
 
     function refreshView(html) {

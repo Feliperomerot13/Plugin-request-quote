@@ -13,6 +13,10 @@ class Luma_Quote_Cart_Mailer
             $admin_emails = get_option('admin_email');
         }
 
+        if (!empty($data['lqc_test_copy'])) {
+            $admin_emails = $data['lqc_email'];
+        }
+
         $customer_name = $data['lqc_name'];
         $customer_email = $data['lqc_email'];
         $customer_phone = $data['lqc_phone'];

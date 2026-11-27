@@ -56,7 +56,7 @@ final class LQC_Quote_PDF
         return !empty($image['file']) ? dirname($original).'/'.basename($image['file']) : $original;
     }
 
-    public static function issue($data, $items, $request_id, $mailer)
+    public static function issue($data, $items, $request_id, $mailer, $quantities_json = null)
     {
         if (!is_email($data['lqc_email']) || !wp_is_uuid($request_id, 4)) {
             throw new RuntimeException('Verifica tu correo y los productos seleccionados.');
@@ -76,9 +76,24 @@ final class LQC_Quote_PDF
             if (is_array($saved)) { return $saved; }
             $folio = 'LUM-'.strtoupper(substr(str_replace('-', '', wp_generate_uuid4()), 0, 12));
             $lines = array();
-            foreach ($items as $item) {
+            $quantities = null;
+            if ($quantities_json !== null && $quantities_json !== '') {
+                $quantities = is_string($quantities_json) ? json_decode($quantities_json, true) : null;
+                if (!is_array($quantities) || count($quantities) !== count($items)) {
+                    throw new RuntimeException('Revisa la selección y las cantidades.');
+                }
+            }
+            foreach ($items as $index => $item) {
                 $product = wc_get_product($item['variation_id'] ?: $item['product_id']);
                 if (!$product) { throw new RuntimeException('Una referencia dejó de estar disponible. Revisa tu selección.'); }
+                if ($quantities !== null) {
+                    $quantity = $quantities[$item['cart_key']] ?? null;
+                    $pattern = LQC_Tariff::unit($product) === 'm2' ? '/^[0-9]{1,7}(?:\.[0-9]{1,2})?$/D' : '/^[0-9]{1,7}$/D';
+                    if (!is_string($quantity) || !preg_match($pattern, $quantity) || (float)$quantity <= 0) {
+                        throw new RuntimeException('Revisa la cantidad y la unidad de la referencia.');
+                    }
+                    $items[$index]['quantity'] = $item['quantity'] = (float)$quantity;
+                }
                 list($net, $tax) = LQC_Tariff::price($product, $item);
                 $priced = !$product->is_type('variable') && $net !== null;
                 $lines[] = array(
