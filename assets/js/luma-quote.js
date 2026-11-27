@@ -1,5 +1,45 @@
 jQuery(document).ready(function ($) {
 
+
+    // BeTheme product sheets put the quote shortcode below the delivery copy.
+    // Move the actual controls so the keyboard order follows the desktop layout.
+    var desktopSheet = window.matchMedia('(min-width: 960px)');
+    $('.mfn-single-product-tmpl-builder .sticky-desktop > .mcb-wrap-inner').each(function () {
+        var column = $(this);
+        var title = column.children('.column_product_title').first();
+        var actions = column.children('.column_plain_text').filter(function () {
+            return $(this).find('.lqc-add-to-quote').length > 0;
+        }).first();
+        if (!title.length || !actions.length) return;
+
+        var originalSlot = document.createComment('Luma product actions');
+        actions[0].before(originalSlot);
+        var features = column.find('.woocommerce-product-details__short-description > ul').first();
+        var disclosure = null;
+        if (features.children('li').length >= 3) {
+            disclosure = $('<details>', {class: 'lqc-product-features'});
+            disclosure.append($('<summary>').text('Ver características'));
+        }
+
+        function layoutSheet() {
+            if (desktopSheet.matches) {
+                actions.addClass('lqc-product-actions').insertAfter(title);
+                if (disclosure && !disclosure[0].isConnected) {
+                    features.before(disclosure);
+                    disclosure.append(features);
+                }
+            } else {
+                originalSlot.after(actions[0]);
+                actions.removeClass('lqc-product-actions');
+                if (disclosure && disclosure[0].isConnected) {
+                    disclosure.before(features).detach();
+                }
+            }
+        }
+        layoutSheet();
+        desktopSheet.addEventListener('change', layoutSheet);
+    });
+
     function showStep(container, contact) {
         container.find('.lqc-items-list, .lqc-continue').prop('hidden', contact);
         container.find('.lqc-contact-form').prop('hidden', !contact);
