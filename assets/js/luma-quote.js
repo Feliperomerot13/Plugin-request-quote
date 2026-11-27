@@ -21,14 +21,29 @@ jQuery(document).ready(function ($) {
             disclosure.append($('<summary>').text('Ver características'));
         }
 
+        var panel = column.parent()[0];
+        var header = document.querySelector('.mfn-header-tmpl-fixed');
+        function measurePanel() {
+            if (!desktopSheet.matches) return;
+            var clearance = header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+            panel.style.setProperty('--lqc-header-bottom', Math.ceil(clearance) + 'px');
+            panel.style.setProperty('--lqc-panel-height', Math.ceil(panel.getBoundingClientRect().height) + 'px');
+        }
+        if (window.ResizeObserver) {
+            var observer = new ResizeObserver(measurePanel);
+            observer.observe(panel);
+            if (header) observer.observe(header);
+        }
         function layoutSheet() {
             if (desktopSheet.matches) {
+                panel.classList.add('lqc-product-panel');
                 actions.addClass('lqc-product-actions').insertAfter(title);
                 if (disclosure && !disclosure[0].isConnected) {
                     features.before(disclosure);
                     disclosure.append(features);
                 }
             } else {
+                panel.classList.remove('lqc-product-panel');
                 originalSlot.after(actions[0]);
                 actions.removeClass('lqc-product-actions');
                 if (disclosure && disclosure[0].isConnected) {
@@ -37,6 +52,7 @@ jQuery(document).ready(function ($) {
             }
         }
         layoutSheet();
+        measurePanel();
         desktopSheet.addEventListener('change', layoutSheet);
     });
 
